@@ -16,7 +16,7 @@ I'm just tired of 'free' software that embark a shitload of feature, mandatory u
 
 So I wanted to create a tool that make only what it says and make it open-source. 
 
-I know that developing this kind of stuff implies a lot of features (like making webgl call and not only http) but this is a cool adventure so - let's go :)
+I know that developing this kind of stuff implies a lot of features (like making graphql call and not only http) but this is a cool adventure so - let's go :)
 
 You can embark with me by contributing or via a [tips](https://github.com/sponsors/bouteillerAlan).
 
