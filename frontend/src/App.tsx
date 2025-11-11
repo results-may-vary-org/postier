@@ -5,6 +5,7 @@ import {ThemeProvider} from "next-themes";
 
 function App() {
   return (
+      // @ts-ignore
       <ThemeProvider attribute="class">
         <Theme accentColor="tomato" radius="small" style={{ width: '100vw' }}>
           <Box p="2">
