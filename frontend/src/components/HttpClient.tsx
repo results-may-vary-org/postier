@@ -16,7 +16,7 @@ import {
 } from "@radix-ui/themes";
 import HTTPResponse = main.HTTPResponse;
 
-type bodyType = 'json' | 'text' | 'none' | 'xml' | 'sparql';
+type BodyType = 'json' | 'text' | 'none' | 'xml' | 'sparql';
 
 interface KeyValue {
   key: string;
@@ -33,7 +33,7 @@ export function HttpClient() {
   const [headers, setHeaders] = useState<KeyValue[]>([]);
   const [queryParams, setQueryParams] = useState<KeyValue[]>([]);
   const [body, setBody] = useState('');
-  const [bodyType, setBodyType] = useState<bodyType>('none');
+  const [bodyType, setBodyType] = useState<BodyType>('none');
   const [response, setResponse] = useState<HTTPResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [responseBody, setResponseBody] = useState('');
@@ -325,7 +325,7 @@ export function HttpClient() {
 
           <Tabs.Content value="body">
             <Box pt="2" pb="2">
-              <Select.Root value={bodyType} onValueChange={(value: bodyType) => setBodyType(value)}>
+              <Select.Root value={bodyType} onValueChange={(value: BodyType) => setBodyType(value)}>
                 <Select.Trigger/>
                 <Select.Content position="popper">
                   <Select.Item value="none">No Body</Select.Item>
