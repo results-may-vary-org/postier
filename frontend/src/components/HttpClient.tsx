@@ -1,4 +1,4 @@
-import {ChangeEvent, useState} from 'react';
+import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState} from 'react';
 import { MakeRequest } from '../../wailsjs/go/main/App';
 import { main } from '../../wailsjs/go/models';
 import { PlusIcon, TrashIcon, PaperPlaneIcon } from '@radix-ui/react-icons';
@@ -12,8 +12,7 @@ import {
   Select,
   Tabs,
   TextArea,
-  TextField,
-  Text
+  TextField
 } from "@radix-ui/themes";
 
 interface KeyValue {
@@ -22,6 +21,10 @@ interface KeyValue {
 }
 
 export function HttpClient() {
+  const requestSectionRef = useRef<HTMLDivElement>(null);
+  const responseTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const responseHeaderListRef = useRef<HTMLDivElement>(null);
+  const responseCookieListRef = useRef<HTMLDivElement>(null);
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('');
   const [headers, setHeaders] = useState<KeyValue[]>([]);
@@ -146,9 +149,23 @@ export function HttpClient() {
     return <Badge color="green" ml="1">yes</Badge>;
   }
 
+  const calculateResponseAreaHeight = useCallback(() => {
+    const requestSectionHeight = requestSectionRef?.current?.offsetHeight ?? 0;
+    const height = window.innerHeight - requestSectionHeight - 96; // 96 is the other element, padding and so on
+    if (responseTextAreaRef.current) responseTextAreaRef.current.style.height = `${height}px`;
+    if (responseCookieListRef.current) responseCookieListRef.current.style.height = `${height}px`;
+    if (responseHeaderListRef.current) responseHeaderListRef.current.style.height = `${height}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    calculateResponseAreaHeight();
+    window.addEventListener("resize", calculateResponseAreaHeight);
+    return () => window.removeEventListener("resize", calculateResponseAreaHeight);
+  }, [calculateResponseAreaHeight]);
+
   return (
     <Box>
-      <Section id="request" pt="2" pb="2">
+      <Section id="request" pt="2" pb="2" ref={requestSectionRef}>
         <Flex gap="2" wrap>
           <Select.Root value={method} onValueChange={setMethod}>
             <Select.Trigger/>
@@ -281,7 +298,7 @@ export function HttpClient() {
                 value={body}
                 onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBody(e.target.value)}
                 placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Raw text content'}
-                style={{ height: '200px' }}
+                style={{ height: '100%' }}
                 disabled={bodyType === 'none'}
               />
             </Box>
@@ -289,7 +306,7 @@ export function HttpClient() {
         </Tabs.Root>
       </Section>
 
-      <Section id="response" pt="2" pb="2">
+      <Section id="response" pt="2" pb="0">
         <Flex gap="2">
           {generateResponseTag()}
           {generateResponseTime()}
@@ -297,24 +314,25 @@ export function HttpClient() {
         </Flex>
 
         <Tabs.Root defaultValue="body">
-          <Tabs.List>
+          <Tabs.List onClick={calculateResponseAreaHeight}>
             <Tabs.Trigger value="body">Body</Tabs.Trigger>
             <Tabs.Trigger value="headers">Headers</Tabs.Trigger>
             <Tabs.Trigger value="cookies">Cookies</Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="body">
-            <Box pt="2" style={{ background: "red" }}>
+            <Box pt="2">
               <TextArea
                 value={JSON.stringify(JSON.parse(response?.body ?? "{\"greetings\": \"Hello there.\"}"), null, 2)}
                 onChange={() => null}
-                style={{ height: "500px" }}
+                style={{ minHeight: "200px"}}
+                ref={responseTextAreaRef}
               />
             </Box>
           </Tabs.Content>
 
           <Tabs.Content value="headers">
-            <Box pt="2">
+            <Box pt="2" ref={responseHeaderListRef} overflowY="scroll">
               <DataList.Root>
                 {Object.entries(response?.headers ?? {"No headers": ""}).map(([key, values]) => (
                   <DataList.Item key={key}>
@@ -326,10 +344,10 @@ export function HttpClient() {
             </Box>
           </Tabs.Content>
 
-          <Tabs.Content value="cookies">
-            <Box pt="2">
+          <Tabs.Content value="cookies" >
+            <Box pt="2" ref={responseCookieListRef} overflowY="scroll">
               <DataList.Root>
-                {(response?.cookies ?? [{"name": "No cookies", "domain": "", value: ""}]).map((cookie, index) => (
+                {(response?.cookies ?? [{"name": "No cookies", "domain": "", "value": ""}]).map((cookie, index) => (
                   <DataList.Item key={index}>
                     <DataList.Label>{cookie.name ?? "No name"} {cookie.domain ? `(${cookie.domain})` : ""}</DataList.Label>
                     <DataList.Value>{cookie.value ?? "No value"}</DataList.Value>
