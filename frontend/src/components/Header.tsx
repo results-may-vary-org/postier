@@ -1,4 +1,4 @@
-import {Box, Flex, Select} from "@radix-ui/themes";
+import {Box, Flex, Select, Separator} from "@radix-ui/themes";
 import {useTheme} from "next-themes";
 import Logo from "../assets/images/postier.svg";
 
@@ -23,7 +23,7 @@ export function Header() {
         </Select.Root>
 
       </Flex>
-
+      <Separator style={{ width: "100%" }}/>
     </Box>
   )
 }

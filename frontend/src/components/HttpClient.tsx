@@ -162,7 +162,7 @@ export function HttpClient() {
 
   const calculateResponseAreaHeight = useCallback(() => {
     const requestSectionHeight = requestSectionRef?.current?.offsetHeight ?? 0;
-    const height = window.innerHeight - requestSectionHeight - 96; // 96 is the other element, padding and so on
+    const height = window.innerHeight - requestSectionHeight - (96 + 40); // 96 is the other element, padding and so on
     if (responseTextAreaRef.current) responseTextAreaRef.current.style.height = `${height}px`;
     if (responseCookieListRef.current) responseCookieListRef.current.style.height = `${height}px`;
     if (responseHeaderListRef.current) responseHeaderListRef.current.style.height = `${height}px`;
