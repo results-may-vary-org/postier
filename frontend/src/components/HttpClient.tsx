@@ -16,6 +16,8 @@ import {
 } from "@radix-ui/themes";
 import HTTPResponse = main.HTTPResponse;
 
+type bodyType = 'json' | 'text' | 'none' | 'xml' | 'sparql';
+
 interface KeyValue {
   key: string;
   value: string;
@@ -31,7 +33,7 @@ export function HttpClient() {
   const [headers, setHeaders] = useState<KeyValue[]>([]);
   const [queryParams, setQueryParams] = useState<KeyValue[]>([]);
   const [body, setBody] = useState('');
-  const [bodyType, setBodyType] = useState<'json' | 'text' | 'none'>('none');
+  const [bodyType, setBodyType] = useState<bodyType>('none');
   const [response, setResponse] = useState<HTTPResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [responseBody, setResponseBody] = useState('');
@@ -74,6 +76,11 @@ export function HttpClient() {
           headersMap[header.key] = header.value;
         }
       });
+
+      if (bodyType === 'json') headersMap['Content-Type'] = 'application/json';
+      if (bodyType === 'text') headersMap['Content-Type'] = 'text/plain';
+      if (bodyType === 'xml') headersMap['Content-Type'] = 'application/xml';
+      if (bodyType === 'sparql') headersMap['Content-Type'] = 'application/sparql-query';
 
       const queryMap: Record<string, string> = {};
       queryParams.forEach(param => {
@@ -138,13 +145,13 @@ export function HttpClient() {
   const generateHeadersBadge = () => {
     if (headers.length === 0) return <Badge color="gray" ml="1">0</Badge>
     const fullHeaders = headers.filter(header => header.key && header.value);
-    return <Badge color="gray" ml="1">{fullHeaders.length}</Badge>;
+    return <Badge color="green" ml="1">{fullHeaders.length}</Badge>;
   }
 
   const generateQueryBadge = () => {
     if (queryParams.length === 0) return <Badge color="gray" ml="1">0</Badge>
     const fullQuery = queryParams.filter(header => header.key && header.value);
-    return <Badge color="gray" ml="1">{fullQuery.length}</Badge>;
+    return <Badge color="green" ml="1">{fullQuery.length}</Badge>;
   }
 
   const generateBodyBadge = () => {
@@ -176,6 +183,20 @@ export function HttpClient() {
     }
 
     return response.body;
+  }
+
+  const calculateHeaderLength = () => {
+    if (response?.headers) {
+      return `(${Object.entries(response.headers).length})`;
+    }
+    return null;
+  }
+
+  const calculateCookieLength = () => {
+    if (response?.cookies) {
+      return `(${Object.entries(response.cookies).length})`;
+    }
+    return null;
   }
 
   useLayoutEffect(() => {
@@ -304,12 +325,14 @@ export function HttpClient() {
 
           <Tabs.Content value="body">
             <Box pt="2" pb="2">
-              <Select.Root value={bodyType} onValueChange={(value: 'json' | 'text' | 'none') => setBodyType(value)}>
+              <Select.Root value={bodyType} onValueChange={(value: bodyType) => setBodyType(value)}>
                 <Select.Trigger/>
                 <Select.Content position="popper">
                   <Select.Item value="none">No Body</Select.Item>
                   <Select.Item value="json">JSON</Select.Item>
                   <Select.Item value="text">Text</Select.Item>
+                  <Select.Item value="xml">XML</Select.Item>
+                  <Select.Item value="sparql">SPARQL</Select.Item>
                 </Select.Content>
               </Select.Root>
             </Box>
@@ -336,8 +359,8 @@ export function HttpClient() {
         <Tabs.Root defaultValue="body">
           <Tabs.List onClick={calculateResponseAreaHeight}>
             <Tabs.Trigger value="body">Body</Tabs.Trigger>
-            <Tabs.Trigger value="headers">Headers</Tabs.Trigger>
-            <Tabs.Trigger value="cookies">Cookies</Tabs.Trigger>
+            <Tabs.Trigger value="headers">Headers {calculateHeaderLength()}</Tabs.Trigger>
+            <Tabs.Trigger value="cookies">Cookies {calculateCookieLength()}</Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="body">
