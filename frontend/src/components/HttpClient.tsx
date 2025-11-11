@@ -14,6 +14,7 @@ import {
   TextArea,
   TextField
 } from "@radix-ui/themes";
+import HTTPResponse = main.HTTPResponse;
 
 interface KeyValue {
   key: string;
@@ -31,8 +32,9 @@ export function HttpClient() {
   const [queryParams, setQueryParams] = useState<KeyValue[]>([]);
   const [body, setBody] = useState('');
   const [bodyType, setBodyType] = useState<'json' | 'text' | 'none'>('none');
-  const [response, setResponse] = useState<main.HTTPResponse | null>(null);
+  const [response, setResponse] = useState<HTTPResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [responseBody, setResponseBody] = useState('');
 
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
@@ -62,18 +64,9 @@ export function HttpClient() {
     setQueryParams(queryParams.filter((_, i) => i !== index));
   };
 
-  const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  };
-
   const sendRequest = async () => {
     setLoading(true);
     setResponse(null);
-
     try {
       const headersMap: Record<string, string> = {};
       headers.forEach(header => {
@@ -99,11 +92,20 @@ export function HttpClient() {
 
       const result = await MakeRequest(request);
       setResponse(result);
+      setResponseBody(generateResponseContent(result));
     } catch (error) {
       console.error('Request failed:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
   const generateResponseTag = () => {
@@ -156,6 +158,21 @@ export function HttpClient() {
     if (responseCookieListRef.current) responseCookieListRef.current.style.height = `${height}px`;
     if (responseHeaderListRef.current) responseHeaderListRef.current.style.height = `${height}px`;
   }, []);
+
+  const generateResponseContent = (response: HTTPResponse | null): string => {
+    if (!response || !response.body) return "";
+
+    const contentType = Object.entries(response.headers).filter((value: [string, string[]]) => {
+      return value[0].toLowerCase().includes("content-type");
+    });
+
+    // we take the first, but anyway there can't be more than one unless the response is not well setup
+    if (contentType.length > 0 && contentType[0][1].includes("application/json")) {
+      return JSON.stringify(JSON.parse(response.body), null, 2);
+    }
+
+    return response.body;
+  }
 
   useLayoutEffect(() => {
     calculateResponseAreaHeight();
@@ -323,7 +340,7 @@ export function HttpClient() {
           <Tabs.Content value="body">
             <Box pt="2">
               <TextArea
-                value={JSON.stringify(JSON.parse(response?.body ?? "{\"greetings\": \"Hello there.\"}"), null, 2)}
+                value={responseBody}
                 onChange={() => null}
                 style={{ minHeight: "200px"}}
                 ref={responseTextAreaRef}
