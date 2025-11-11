@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@radix-ui/themes": "^3.2.1"
+  }
+}
