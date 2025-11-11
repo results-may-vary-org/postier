@@ -68,7 +68,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			StatusCode: 0,
 			Status:     "Invalid URL",
 			Body:       fmt.Sprintf("Error parsing URL: %v", err),
-			Duration:   time.Since(startTime).Milliseconds(),
+			Duration:   time.Since(startTime).Microseconds(),
 		}
 	}
 
@@ -93,7 +93,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			StatusCode: 0,
 			Status:     "Request Creation Error",
 			Body:       fmt.Sprintf("Error creating request: %v", err),
-			Duration:   time.Since(startTime).Milliseconds(),
+			Duration:   time.Since(startTime).Microseconds(),
 		}
 	}
 
@@ -114,7 +114,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			StatusCode: 0,
 			Status:     "Request Error",
 			Body:       fmt.Sprintf("Error making request: %v", err),
-			Duration:   time.Since(startTime).Milliseconds(),
+			Duration:   time.Since(startTime).Microseconds(),
 		}
 	}
 	defer resp.Body.Close()
@@ -127,7 +127,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			Status:     resp.Status,
 			Headers:    resp.Header,
 			Body:       fmt.Sprintf("Error reading response body: %v", err),
-			Duration:   time.Since(startTime).Milliseconds(),
+			Duration:   time.Since(startTime).Microseconds(),
 		}
 	}
 
@@ -145,8 +145,6 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		})
 	}
 
-	duration := time.Since(startTime).Milliseconds()
-
 	return HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
@@ -154,6 +152,6 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		Cookies:    cookies,
 		Body:       string(bodyBytes),
 		Size:       int64(len(bodyBytes)),
-		Duration:   duration,
+		Duration:   time.Since(startTime).Microseconds(),
 	}
 }

@@ -126,11 +126,13 @@ export function HttpClient() {
   }
 
   const generateResponseTime = () => {
+    // response.duration is in Microseconds
     if (!response) return <Badge color="gray">0 ms</Badge>;
-    const responseTime = response.duration ?? 0;
-    if (responseTime < 500) return <Badge color="green">{responseTime} ms</Badge>;
-    if (responseTime > 501 && responseTime < 1000) return <Badge color="orange">{responseTime} ms</Badge>;
-    return <Badge color="red">{responseTime} ms</Badge>;
+    const responseTimeInMicro = response.duration ?? 0;
+    const responseTimeInMilli = responseTimeInMicro / 1000;
+    if (responseTimeInMilli < 500) return <Badge color="green">{responseTimeInMilli} ms</Badge>;
+    if (responseTimeInMilli > 501 && responseTimeInMilli < 1000) return <Badge color="orange">{responseTimeInMilli} ms</Badge>;
+    return <Badge color="red">{responseTimeInMilli} ms</Badge>;
   }
 
   const generateHeadersBadge = () => {
@@ -162,13 +164,15 @@ export function HttpClient() {
   const generateResponseContent = (response: HTTPResponse | null): string => {
     if (!response || !response.body) return "";
 
-    const contentType = Object.entries(response.headers).filter((value: [string, string[]]) => {
-      return value[0].toLowerCase().includes("content-type");
-    });
+    if (response.headers) {
+      const contentType = Object.entries(response.headers).filter((value: [string, string[]]) => {
+        return value[0].toLowerCase().includes("content-type");
+      });
 
-    // we take the first, but anyway there can't be more than one unless the response is not well setup
-    if (contentType.length > 0 && contentType[0][1].includes("application/json")) {
-      return JSON.stringify(JSON.parse(response.body), null, 2);
+      // we take the first, but anyway there can't be more than one unless the response is not well setup
+      if (contentType.length > 0 && contentType[0][1].includes("application/json")) {
+        return JSON.stringify(JSON.parse(response.body), null, 2);
+      }
     }
 
     return response.body;
@@ -235,7 +239,7 @@ export function HttpClient() {
           <Tabs.Content value="headers">
             <Box pt="2" pb="2">
               <Button onClick={addHeader}>
-                <PlusIcon /> Add Header
+                <PlusIcon /> Add header
               </Button>
             </Box>
             <Box height="200px" overflowY="auto">
@@ -268,8 +272,7 @@ export function HttpClient() {
           <Tabs.Content value="query">
             <Box pt="2" pb="2">
               <Button onClick={addQueryParam}>
-                <PlusIcon />
-                Add Parameter
+                <PlusIcon /> Add parameter
               </Button>
             </Box>
             <Box height="200px" overflowY="auto">
