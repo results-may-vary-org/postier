@@ -1,3 +1,11 @@
 .radix-themes {
   --cursor-button: pointer;
 }
+
+#request {
+  min-height: calc(30vh - 8px); /*8px because padding is set to 8px by radix p="2"*/
+}
+
+#response {
+  min-height: calc(50vh - 8px); /*8px because padding is set to 8px by radix p="2"*/
+}

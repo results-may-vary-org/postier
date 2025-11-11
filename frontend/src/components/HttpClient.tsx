@@ -12,7 +12,8 @@ import {
   Select,
   Tabs,
   TextArea,
-  TextField
+  TextField,
+  Text
 } from "@radix-ui/themes";
 
 interface KeyValue {
@@ -56,14 +57,6 @@ export function HttpClient() {
 
   const removeQueryParam = (index: number) => {
     setQueryParams(queryParams.filter((_, i) => i !== index));
-  };
-
-  const getStatusColor = (statusCode: number): string => {
-    if (statusCode >= 200 && statusCode < 300) return 'status-success';
-    if (statusCode >= 300 && statusCode < 400) return 'status-redirect';
-    if (statusCode >= 400 && statusCode < 500) return 'status-client-error';
-    if (statusCode >= 500) return 'status-server-error';
-    return '';
   };
 
   const formatSize = (bytes: number): string => {
@@ -111,7 +104,7 @@ export function HttpClient() {
   };
 
   const generateResponseTag = () => {
-    if (!response) return null;
+    if (!response) return <Badge color="gray">000</Badge>;
     const responseStatus = response.statusCode.toString().slice(0, 1) ?? 0;
     switch ( responseStatus ) {
       case '2':
@@ -127,9 +120,34 @@ export function HttpClient() {
     }
   }
 
+  const generateResponseTime = () => {
+    if (!response) return <Badge color="gray">0 ms</Badge>;
+    const responseTime = response.duration ?? 0;
+    if (responseTime < 500) return <Badge color="green">{responseTime} ms</Badge>;
+    if (responseTime > 501 && responseTime < 1000) return <Badge color="orange">{responseTime} ms</Badge>;
+    return <Badge color="red">{responseTime} ms</Badge>;
+  }
+
+  const generateHeadersBadge = () => {
+    if (headers.length === 0) return <Badge color="gray" ml="1">0</Badge>
+    const fullHeaders = headers.filter(header => header.key && header.value);
+    return <Badge color="gray" ml="1">{fullHeaders.length}</Badge>;
+  }
+
+  const generateQueryBadge = () => {
+    if (queryParams.length === 0) return <Badge color="gray" ml="1">0</Badge>
+    const fullQuery = queryParams.filter(header => header.key && header.value);
+    return <Badge color="gray" ml="1">{fullQuery.length}</Badge>;
+  }
+
+  const generateBodyBadge = () => {
+    if (bodyType === "none") return <Badge color="gray" ml="1">no</Badge>;
+    if (body.length === 0) return <Badge color="orange" ml="1">no</Badge>;
+    return <Badge color="green" ml="1">yes</Badge>;
+  }
+
   return (
     <Box>
-
       <Section id="request" pt="2" pb="2">
         <Flex gap="2" wrap>
           <Select.Root value={method} onValueChange={setMethod}>
@@ -166,9 +184,18 @@ export function HttpClient() {
         <Tabs.Root defaultValue="headers">
 
           <Tabs.List>
-            <Tabs.Trigger value="headers">Header</Tabs.Trigger>
-            <Tabs.Trigger value="query">Query</Tabs.Trigger>
-            <Tabs.Trigger value="body">Body</Tabs.Trigger>
+            <Tabs.Trigger value="headers">
+              Header
+              {generateHeadersBadge()}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="query">
+              Query
+              {generateQueryBadge()}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="body">
+              Body
+              {generateBodyBadge()}
+            </Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="headers">
@@ -177,7 +204,7 @@ export function HttpClient() {
                 <PlusIcon /> Add Header
               </Button>
             </Box>
-            <Box>
+            <Box height="200px" overflowY="auto">
               {headers.map((header, index) => (
                 <Flex gap="2" wrap pb="2" key={index}>
                   <Box width="100%">
@@ -211,7 +238,7 @@ export function HttpClient() {
                 Add Parameter
               </Button>
             </Box>
-            <Box>
+            <Box height="200px" overflowY="auto">
               {queryParams.map((param, index) => (
                 <Flex gap="2" wrap pb="2" key={index}>
                   <Box width="100%">
@@ -242,80 +269,77 @@ export function HttpClient() {
             <Box pt="2" pb="2">
               <Select.Root value={bodyType} onValueChange={(value: 'json' | 'text' | 'none') => setBodyType(value)}>
                 <Select.Trigger/>
-                <Select.Content>
+                <Select.Content position="popper">
                   <Select.Item value="none">No Body</Select.Item>
                   <Select.Item value="json">JSON</Select.Item>
                   <Select.Item value="text">Text</Select.Item>
                 </Select.Content>
               </Select.Root>
             </Box>
-            {bodyType !== 'none' && (
+            <Box height="200px">
               <TextArea
                 value={body}
                 onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBody(e.target.value)}
                 placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Raw text content'}
-                rows={8}
+                style={{ height: '200px' }}
+                disabled={bodyType === 'none'}
               />
-            )}
+            </Box>
           </Tabs.Content>
         </Tabs.Root>
       </Section>
 
-      {response && (
-        <Section id="response" pt="2" pb="2">
-          <Flex gap="2">
-            {generateResponseTag()}
-            <Badge color="blue">{response.duration}ms</Badge>
-            <Badge color="blue">{formatSize(response.size)}</Badge>
-          </Flex>
+      <Section id="response" pt="2" pb="2">
+        <Flex gap="2">
+          {generateResponseTag()}
+          {generateResponseTime()}
+          <Badge color="blue">{formatSize(response?.size ?? 0)}</Badge>
+        </Flex>
 
-          <Tabs.Root defaultValue="body">
-            <Tabs.List>
-              <Tabs.Trigger value="body">Body</Tabs.Trigger>
-              <Tabs.Trigger value="headers">Headers</Tabs.Trigger>
-              <Tabs.Trigger value="cookies">Cookies</Tabs.Trigger>
-            </Tabs.List>
+        <Tabs.Root defaultValue="body">
+          <Tabs.List>
+            <Tabs.Trigger value="body">Body</Tabs.Trigger>
+            <Tabs.Trigger value="headers">Headers</Tabs.Trigger>
+            <Tabs.Trigger value="cookies">Cookies</Tabs.Trigger>
+          </Tabs.List>
 
-            <Tabs.Content value="body">
-              <Box pt="2">
-                <TextArea
-                  value={JSON.stringify(JSON.parse(response.body), null, 2)}
-                  onChange={() => null}
-                  rows={8}
-                />
-              </Box>
-            </Tabs.Content>
+          <Tabs.Content value="body">
+            <Box pt="2" style={{ background: "red" }}>
+              <TextArea
+                value={JSON.stringify(JSON.parse(response?.body ?? "{\"greetings\": \"Hello there.\"}"), null, 2)}
+                onChange={() => null}
+                style={{ height: "500px" }}
+              />
+            </Box>
+          </Tabs.Content>
 
-            <Tabs.Content value="headers">
-              <Box pt="2">
-                <DataList.Root>
-                  {Object.entries(response.headers).map(([key, values]) => (
-                    <DataList.Item key={key}>
-                      <DataList.Label>{key}</DataList.Label>
-                      <DataList.Value>{values}</DataList.Value>
-                    </DataList.Item>
-                  ))}
-                </DataList.Root>
-              </Box>
-            </Tabs.Content>
+          <Tabs.Content value="headers">
+            <Box pt="2">
+              <DataList.Root>
+                {Object.entries(response?.headers ?? {"No headers": ""}).map(([key, values]) => (
+                  <DataList.Item key={key}>
+                    <DataList.Label>{key}</DataList.Label>
+                    <DataList.Value>{values}</DataList.Value>
+                  </DataList.Item>
+                ))}
+              </DataList.Root>
+            </Box>
+          </Tabs.Content>
 
-            <Tabs.Content value="cookies">
-              <Box pt="2">
-                <DataList.Root>
-                  {response && response.cookies && response.cookies.length > 0 &&
-                    response.cookies.map((cookie, index) => (
-                      <DataList.Item key={index}>
-                        <DataList.Label>{cookie.name} ({cookie.domain})</DataList.Label>
-                        <DataList.Value>{cookie.value}</DataList.Value>
-                      </DataList.Item>
-                    ))
-                  }
-                </DataList.Root>
-              </Box>
-            </Tabs.Content>
-          </Tabs.Root>
-        </Section>
-      )}
+          <Tabs.Content value="cookies">
+            <Box pt="2">
+              <DataList.Root>
+                {(response?.cookies ?? [{"name": "No cookies", "domain": "", value: ""}]).map((cookie, index) => (
+                  <DataList.Item key={index}>
+                    <DataList.Label>{cookie.name ?? "No name"} {cookie.domain ? `(${cookie.domain})` : ""}</DataList.Label>
+                    <DataList.Value>{cookie.value ?? "No value"}</DataList.Value>
+                  </DataList.Item>
+                ))}
+              </DataList.Root>
+            </Box>
+          </Tabs.Content>
+        </Tabs.Root>
+      </Section>
     </Box>
   );
 }
