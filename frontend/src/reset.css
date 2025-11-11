@@ -25,7 +25,7 @@ footer, header, hgroup, menu, nav, section {
 }
 body {
   line-height: 1;
-  background: red; /*this is important for wails, if not defined the view show other trace of old rendered stuff*/
+  background: #fffbeb; /*this is important for wails, if not defined the view show other trace of old rendered stuff*/
 }
 ol, ul {
   list-style: none;
