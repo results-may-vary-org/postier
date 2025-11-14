@@ -165,7 +165,9 @@ export namespace main {
 	    url: string;
 	    headers: Record<string, string>;
 	    body: string;
+	    bodyType: string;
 	    query: Record<string, string>;
+	    response?: HTTPResponse;
 	    // Go type: time
 	    createdAt: any;
 	    // Go type: time
@@ -183,7 +185,9 @@ export namespace main {
 	        this.url = source["url"];
 	        this.headers = source["headers"];
 	        this.body = source["body"];
+	        this.bodyType = source["bodyType"];
 	        this.query = source["query"];
+	        this.response = this.convertValues(source["response"], HTTPResponse);
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.updatedAt = this.convertValues(source["updatedAt"], null);
 	    }
