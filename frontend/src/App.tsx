@@ -7,20 +7,25 @@ import {History} from "./components/History";
 
 function App() {
   return (
-      // @ts-ignore
-      <ThemeProvider attribute="class">
-        <Theme accentColor="tomato" radius="small" style={{ width: '100vw' }}>
-          <Header/>
-          <Flex>
-            <Box width="200px">
-              <History/>
-            </Box>
-            <Box width="100%" p="2">
-              <HttpClient/>
-            </Box>
-          </Flex>
-        </Theme>
-      </ThemeProvider>
+    // @ts-ignore
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem={true}
+      storageKey="postier-theme"
+    >
+      <Theme accentColor="tomato" radius="small" style={{ width: '100vw' }}>
+        <Header/>
+        <Flex>
+          <Box width="200px">
+            <History/>
+          </Box>
+          <Box width="100%" p="2">
+            <HttpClient/>
+          </Box>
+        </Flex>
+      </Theme>
+    </ThemeProvider>
     )
 }
 
