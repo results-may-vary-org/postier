@@ -185,7 +185,9 @@ type PostierRequest struct {
 	URL         string            `json:"url"`
 	Headers     map[string]string `json:"headers"`
 	Body        string            `json:"body"`
+	BodyType    string            `json:"bodyType"`
 	Query       map[string]string `json:"query"`
+	Response    *HTTPResponse     `json:"response,omitempty"`
 	CreatedAt   time.Time         `json:"createdAt"`
 	UpdatedAt   time.Time         `json:"updatedAt"`
 }
