@@ -1,77 +1,31 @@
-import { useState, useEffect } from 'react';
-import { Box, Flex, Button, AlertDialog, TextField, ContextMenu, Text, ScrollArea } from "@radix-ui/themes";
+import { useState, useEffect } from "react";
+import { Box, Flex, Button, TextField, ContextMenu, Text, ScrollArea } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
-import { ChevronRightIcon, FileIcon, PlusIcon, Cross2Icon } from '@radix-ui/react-icons';
-import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog } from '../../wailsjs/go/main/App';
-import { main } from '../../wailsjs/go/models';
-
+import { ChevronRightIcon, FileIcon, PlusIcon, Cross2Icon, UpdateIcon } from "@radix-ui/react-icons";
+import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog } from "../../wailsjs/go/main/App";
+import { main } from "../../wailsjs/go/models";
+import {Collection} from "../types/common";
+import { useCollectionStore } from "../stores/store";
+import { Alert, ConfirmAlert, InfoAlert } from "./Alert";
 type DirectoryTree = main.DirectoryTree;
 type FileSystemEntry = main.FileSystemEntry;
 
-interface Collection {
-  id: string;
-  name: string;
-  path: string;
-  tree: DirectoryTree;
-}
+export function FileTree() {
+  const {
+    collections,
+    expandedNodes,
+    selectedCollection,
+    currentFile,
+    setCollections,
+    addCollection,
+    removeCollection,
+    setSelectedCollection,
+    resetSelectedCollection,
+    setCurrentFile,
+    resetCurrentFile,
+    setExpandedNodes
+  } = useCollectionStore();
 
-// LocalStorage utilities
-const STORAGE_KEY = 'postier-collections';
-const EXPANDED_NODES_KEY = 'postier-expanded-nodes';
-
-const saveCollectionsToStorage = (collections: Collection[]) => {
-  try {
-    // Only save the essential data, not the full tree
-    const collectionsToSave = collections.map(c => ({
-      id: c.id,
-      name: c.name,
-      path: c.path
-    }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(collectionsToSave));
-  } catch (error) {
-    console.error('Failed to save collections to localStorage:', error);
-  }
-};
-
-const loadCollectionsFromStorage = (): { id: string; name: string; path: string }[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error('Failed to load collections from localStorage:', error);
-    return [];
-  }
-};
-
-const clearCollectionsStorage = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to clear collections from localStorage:', error);
-  }
-};
-
-const saveExpandedNodesToStorage = (expandedNodes: Set<string>) => {
-  try {
-    localStorage.setItem(EXPANDED_NODES_KEY, JSON.stringify(Array.from(expandedNodes)));
-  } catch (error) {
-    console.error('Failed to save expanded nodes to localStorage:', error);
-  }
-};
-
-const loadExpandedNodesFromStorage = (): Set<string> => {
-  try {
-    const stored = localStorage.getItem(EXPANDED_NODES_KEY);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  } catch (error) {
-    console.error('Failed to load expanded nodes from localStorage:', error);
-    return new Set();
-  }
-};
-
-export function History() {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => loadExpandedNodesFromStorage());
   const [editingNode, setEditingNode] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; hasChildren: boolean } | null>(null);
@@ -81,14 +35,17 @@ export function History() {
   const [createDialog, setCreateDialog] = useState<{ parentPath: string; isDir: boolean } | null>(null);
   const [createName, setCreateName] = useState('');
   const [isLoadingCollections, setIsLoadingCollections] = useState(true);
+  const [selectCollectionDialog, setSelectCollectionDialog] = useState(false);
 
-  // Load collections from localStorage on component mount
+  const expandedNodesSet = new Set(expandedNodes);
+  const selectedCollectionId = selectedCollection;
+  const currentFilePath = currentFile;
+
+  // Load collections from store on component mount
   useEffect(() => {
     const loadStoredCollections = async () => {
       try {
-        const storedCollections = loadCollectionsFromStorage();
-
-        if (storedCollections.length === 0) {
+        if (collections.length === 0) {
           setIsLoadingCollections(false);
           return;
         }
@@ -96,10 +53,9 @@ export function History() {
         const loadedCollections: Collection[] = [];
         const invalidCollections: string[] = [];
 
-        for (const stored of storedCollections) {
+        for (const stored of collections) {
           try {
             const tree = await GetDirectoryTree(stored.path);
-            console.log(`Loaded collection "${stored.name}":`, tree);
             loadedCollections.push({
               id: stored.id,
               name: stored.name,
@@ -116,20 +72,13 @@ export function History() {
 
         // Auto-expand root directories of loaded collections
         if (loadedCollections.length > 0) {
-          setExpandedNodes(prev => {
-            const newExpandedNodes = new Set(prev);
-            loadedCollections.forEach(collection => {
-              console.log(`Auto-expanding collection: ${collection.path}`);
-              newExpandedNodes.add(collection.path);
-            });
-            console.log('Final expanded nodes:', Array.from(newExpandedNodes));
-            return newExpandedNodes;
+          const newExpandedNodes = [...expandedNodes];
+          loadedCollections.forEach(collection => {
+            if (!newExpandedNodes.includes(collection.path)) {
+              newExpandedNodes.push(collection.path);
+            }
           });
-        }
-
-        // Update storage to remove any invalid collections
-        if (loadedCollections.length !== storedCollections.length) {
-          saveCollectionsToStorage(loadedCollections);
+          setExpandedNodes(newExpandedNodes);
         }
 
         // Show a notification if some collections couldn't be loaded
@@ -149,17 +98,20 @@ export function History() {
     loadStoredCollections();
   }, []);
 
-  // Save collections to localStorage whenever collections change
+  // Handle default collection selection
   useEffect(() => {
-    if (collections.length >= 0) { // Save even when empty to clear storage
-      saveCollectionsToStorage(collections);
+    if (!isLoadingCollections && collections.length > 0) {
+      if (!selectedCollectionId || !collections.find(c => c.id === selectedCollectionId)) {
+        if (collections.length === 1) {
+          // Auto-select if only one collection
+          setSelectedCollection(collections[0].id);
+        } else {
+          // Ask user to select a collection
+          setSelectCollectionDialog(true);
+        }
+      }
     }
-  }, [collections]);
-
-  // Save expanded nodes to localStorage whenever they change
-  useEffect(() => {
-    saveExpandedNodesToStorage(expandedNodes);
-  }, [expandedNodes]);
+  }, [collections, selectedCollectionId, isLoadingCollections]);
 
   const loadCollection = async () => {
     try {
@@ -181,10 +133,16 @@ export function History() {
         tree
       };
 
-      setCollections(prev => [...prev, collection]);
+      addCollection(collection);
 
       // Auto-expand the root directory of the new collection
-      setExpandedNodes(prev => new Set([...prev, collection.path]));
+      const newExpandedNodes = [...expandedNodes, collection.path];
+      setExpandedNodes(newExpandedNodes);
+
+      // Auto-select this collection if none is selected
+      if (!selectedCollectionId) {
+        setSelectedCollection(collection.id);
+      }
     } catch (error) {
       console.error('Failed to load collection:', error);
       setErrorDialog({ title: 'Failed to load collection', message: String(error) });
@@ -203,21 +161,61 @@ export function History() {
 
     const collectionToClose = collections.find(c => c.id === closeConfirmation.collectionId);
 
-    setCollections(prev => prev.filter(c => c.id !== closeConfirmation.collectionId));
-    setExpandedNodes(prev => {
-      const newSet = new Set(prev);
-      // Remove all nodes from this collection
-      if (collectionToClose) {
-        removeNodesFromSet(newSet, collectionToClose.tree);
-      }
-      return newSet;
-    });
+    // Check if current file belongs to this collection
+    if (currentFilePath && collectionToClose && currentFilePath.startsWith(collectionToClose.path)) {
+      // Clear the current file and trigger clear request event
+      resetCurrentFile();
+      window.dispatchEvent(new CustomEvent('postier-clear-request'));
+    }
+
+    // Check if this was the selected collection and clear it
+    if (selectedCollectionId === closeConfirmation.collectionId) {
+      resetSelectedCollection();
+    }
+
+    if (collectionToClose) {
+      removeCollection(collectionToClose);
+
+      // Remove all nodes from this collection from expanded nodes
+      const newExpandedNodes = expandedNodes.filter(nodePath =>
+        !nodePath.startsWith(collectionToClose.path)
+      );
+      setExpandedNodes(newExpandedNodes);
+    }
     setCloseConfirmation(null);
   };
 
-  const removeNodesFromSet = (set: Set<string>, node: DirectoryTree) => {
-    set.delete(node.entry.path);
-    node.children?.forEach(child => removeNodesFromSet(set, child));
+  const selectCollection = (collectionId: string) => {
+    setSelectedCollection(collectionId);
+    setSelectCollectionDialog(false);
+  };
+
+  const handleFileClick = async (filePath: string) => {
+    try {
+      // Find the collection this file belongs to and make it the default
+      const ownerCollection = collections.find(c => filePath.startsWith(c.path));
+      if (ownerCollection) {
+        setSelectedCollection(ownerCollection.id);
+      }
+
+      // For .postier files, load the request
+      if (filePath.endsWith('.postier')) {
+        // Mark file as current
+        setCurrentFile(filePath);
+
+        // Trigger file load event - parent component should listen for this
+        window.dispatchEvent(new CustomEvent('postier-load-file', { detail: { filePath } }));
+      }
+    } catch (error) {
+      console.error('Failed to handle file click:', error);
+      setErrorDialog({ title: 'Failed to load file', message: String(error) });
+    }
+  };
+
+  const refreshCollections = async () => {
+    for (const collection of collections) {
+      await refreshCollection(collection.id);
+    }
   };
 
   const refreshCollection = async (collectionId: string) => {
@@ -226,29 +224,44 @@ export function History() {
 
     try {
       const updatedTree = await GetDirectoryTree(collection.path);
-      setCollections(prev => prev.map(c =>
+      const updatedCollections = collections.map(c =>
         c.id === collectionId
           ? { ...c, tree: updatedTree }
           : c
-      ));
+      );
+      setCollections(updatedCollections);
     } catch (error) {
       console.error('Failed to refresh collection:', error);
     }
   };
 
   const toggleNode = (path: string) => {
-    setExpandedNodes(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(path)) {
-        newSet.delete(path);
-      } else {
-        newSet.add(path);
-      }
-      return newSet;
-    });
+    // Find the collection this path belongs to and make it the default
+    const ownerCollection = collections.find(c => path.startsWith(c.path));
+    if (ownerCollection) {
+      setSelectedCollection(ownerCollection.id);
+    }
+
+    // Clear request when clicking on a directory
+    window.dispatchEvent(new CustomEvent('postier-clear-request'));
+
+    const newExpandedNodes = [...expandedNodes];
+    const pathIndex = newExpandedNodes.indexOf(path);
+    if (pathIndex > -1) {
+      newExpandedNodes.splice(pathIndex, 1);
+    } else {
+      newExpandedNodes.push(path);
+    }
+    setExpandedNodes(newExpandedNodes);
   };
 
   const startEdit = (node: FileSystemEntry) => {
+    // Find the collection this node belongs to and make it the default
+    const ownerCollection = collections.find(c => node.path.startsWith(c.path));
+    if (ownerCollection) {
+      setSelectedCollection(ownerCollection.id);
+    }
+
     const baseName = node.isDir ? node.name : node.name.replace(/\.[^/.]+$/, '');
     setEditingNode(node.path);
     setEditingValue(baseName);
@@ -307,6 +320,12 @@ export function History() {
   };
 
   const requestCreateNew = (parentPath: string, isDir: boolean) => {
+    // Find the collection this path belongs to and make it the default
+    const ownerCollection = collections.find(c => parentPath.startsWith(c.path));
+    if (ownerCollection) {
+      setSelectedCollection(ownerCollection.id);
+    }
+
     setCreateDialog({ parentPath, isDir });
     setCreateName('');
   };
@@ -352,7 +371,11 @@ export function History() {
 
       // Refresh collections and expand parent
       collections.forEach(c => refreshCollection(c.id));
-      setExpandedNodes(prev => new Set([...prev, parentPath]));
+      const newExpandedNodes = [...expandedNodes];
+      if (!newExpandedNodes.includes(parentPath)) {
+        newExpandedNodes.push(parentPath);
+      }
+      setExpandedNodes(newExpandedNodes);
       setCreateDialog(null);
     } catch (error) {
       console.error('Failed to create:', error);
@@ -362,6 +385,12 @@ export function History() {
   };
 
   const deleteNode = async (path: string) => {
+    // Find the collection this path belongs to and make it the default
+    const ownerCollection = collections.find(c => path.startsWith(c.path));
+    if (ownerCollection) {
+      setSelectedCollection(ownerCollection.id);
+    }
+
     const node = collections.flatMap(c => getAllNodes(c.tree))
       .find(n => n.entry.path === path);
 
@@ -410,12 +439,8 @@ export function History() {
   };
 
   const renderNode = (node: DirectoryTree, depth: number = 0) => {
-    const isExpanded = expandedNodes.has(node.entry.path);
+    const isExpanded = expandedNodesSet.has(node.entry.path);
     const isEditing = editingNode === node.entry.path;
-
-    if (depth === 0) {
-      console.log(`Rendering collection "${node.entry.name}": expanded=${isExpanded}, children=${node.children?.length || 0}`);
-    }
 
     return (
       <Box key={node.entry.path}>
@@ -431,7 +456,13 @@ export function History() {
                 borderRadius: '4px'
               }}
               className="hover:bg-gray-100"
-              onClick={() => node.entry.isDir && toggleNode(node.entry.path)}
+              onClick={() => {
+                if (node.entry.isDir) {
+                  toggleNode(node.entry.path);
+                } else {
+                  handleFileClick(node.entry.path);
+                }
+              }}
             >
               {node.entry.isDir ? (
                 <ChevronRightIcon style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }} />
@@ -452,7 +483,7 @@ export function History() {
                   autoFocus
                 />
               ) : (
-                <Text size="2">{node.entry.name}</Text>
+                <Text size="2">{node.entry.name.replace(".postier", "")}</Text>
               )}
             </Flex>
           </ContextMenu.Trigger>
@@ -489,23 +520,49 @@ export function History() {
 
   return (
     <Flex direction="row" height="100%">
-      <Box height="100%" width="95%">
+      <Box height="100%" width="100%">
         <Flex direction="column" height="100%">
-          <Flex justify="between" align="center" p="2">
+          <Flex justify="start" align="center" p="2" gap="2">
             <Button size="1" onClick={loadCollection}>
               <PlusIcon /> Load
+            </Button>
+            <Button size="1" variant="soft" onClick={refreshCollections}>
+              <UpdateIcon /> Refresh
             </Button>
           </Flex>
 
           <ScrollArea style={{ flex: 1 }}>
             {collections.map(collection => (
               <Box key={collection.id} mb="4">
-                <Flex justify="between" align="center" p="2" style={{ backgroundColor: 'var(--gray-2)' }}>
-                  <Text weight="medium">{collection.name}</Text>
+                <Flex
+                  justify="between"
+                  align="center"
+                  p="2"
+                  style={{
+                    backgroundColor: selectedCollectionId === collection.id ? 'var(--orange-2)' : 'var(--gray-2)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => {
+                    setSelectedCollection(collection.id);
+                    // Clear request when clicking on collection
+                    window.dispatchEvent(new CustomEvent('postier-clear-request'));
+                  }}
+                >
+                  <Text
+                    weight="medium"
+                    style={{
+                      color: selectedCollectionId === collection.id ? 'var(--orange-11)' : 'inherit'
+                    }}
+                  >
+                    {collection.name}
+                  </Text>
                   <Button
                     size="1"
                     variant="ghost"
-                    onClick={() => requestCloseCollection(collection.id)}
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      requestCloseCollection(collection.id);
+                    }}
                   >
                     <Cross2Icon />
                   </Button>
@@ -540,113 +597,92 @@ export function History() {
         <Separator orientation="vertical" style={{ width: "100%", height: "100%" }}/>
       </Box>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog.Root open={!!deleteConfirmation} onOpenChange={() => setDeleteConfirmation(null)}>
-        <AlertDialog.Content style={{ maxWidth: 450 }}>
-          <AlertDialog.Title>Delete Folder</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            This folder contains files or subfolders. Are you sure you want to delete it and all its contents? This action cannot be undone.
-          </AlertDialog.Description>
+      <ConfirmAlert
+        isOpen={!!deleteConfirmation}
+        onClose={() => setDeleteConfirmation(null)}
+        title="Delete Folder"
+        description="This folder contains files or subfolders. Are you sure you want to delete it and all its contents? This action cannot be undone."
+        onConfirm={confirmDelete}
+        confirmLabel="Delete"
+        confirmColor="red"
+      />
 
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={confirmDelete}>
-                Delete
-              </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
+      <ConfirmAlert
+        isOpen={!!closeConfirmation}
+        onClose={() => setCloseConfirmation(null)}
+        title="Close Collection"
+        description={`Are you sure you want to close the collection "${closeConfirmation?.collectionName}"? Any unsaved changes may be lost.`}
+        onConfirm={confirmCloseCollection}
+        confirmLabel="Close Collection"
+        confirmColor="red"
+      />
 
-      {/* Close Collection Confirmation Dialog */}
-      <AlertDialog.Root open={!!closeConfirmation} onOpenChange={() => setCloseConfirmation(null)}>
-        <AlertDialog.Content style={{ maxWidth: 450 }}>
-          <AlertDialog.Title>Close Collection</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            Are you sure you want to close the collection "{closeConfirmation?.collectionName}"? Any unsaved changes may be lost.
-          </AlertDialog.Description>
+      <InfoAlert
+        isOpen={!!duplicateCollectionPath}
+        onClose={() => setDuplicateCollectionPath(null)}
+        title="Collection Already Open"
+        description="This collection is already open in the workspace. Please close it first if you want to reload it."
+      />
 
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={confirmCloseCollection}>
-                Close Collection
-              </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
+      <InfoAlert
+        isOpen={!!errorDialog}
+        onClose={() => setErrorDialog(null)}
+        title={errorDialog?.title || ""}
+        description={errorDialog?.message || ""}
+      />
 
-      {/* Duplicate Collection Dialog */}
-      <AlertDialog.Root open={!!duplicateCollectionPath} onOpenChange={() => setDuplicateCollectionPath(null)}>
-        <AlertDialog.Content style={{ maxWidth: 450 }}>
-          <AlertDialog.Title>Collection Already Open</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            This collection is already open in the workspace. Please close it first if you want to reload it.
-          </AlertDialog.Description>
+      <Alert
+        isOpen={!!createDialog}
+        onClose={() => setCreateDialog(null)}
+        title={`Create New ${createDialog?.isDir ? 'Folder' : 'Request'}`}
+        description={`Enter the name for the new ${createDialog?.isDir ? 'folder' : 'request'}:`}
+        actions={[
+          {
+            label: 'Create',
+            onClick: confirmCreateNew,
+            color: 'blue'
+          }
+        ]}
+      >
+        <TextField.Root
+          value={createName}
+          onChange={(e: any) => setCreateName(e.target.value)}
+          placeholder={`${createDialog?.isDir ? 'Folder' : 'Request'} name`}
+          onKeyDown={(e: any) => {
+            if (e.key === 'Enter') confirmCreateNew();
+            if (e.key === 'Escape') setCreateDialog(null);
+          }}
+        />
+      </Alert>
 
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">OK</Button>
-            </AlertDialog.Cancel>
-          </Flex>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
-
-      {/* Error Dialog */}
-      <AlertDialog.Root open={!!errorDialog} onOpenChange={() => setErrorDialog(null)}>
-        <AlertDialog.Content style={{ maxWidth: 450 }}>
-          <AlertDialog.Title>{errorDialog?.title}</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            {errorDialog?.message}
-          </AlertDialog.Description>
-
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">OK</Button>
-            </AlertDialog.Cancel>
-          </Flex>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
-
-      {/* Create New Dialog */}
-      <AlertDialog.Root open={!!createDialog} onOpenChange={() => setCreateDialog(null)}>
-        <AlertDialog.Content style={{ maxWidth: 450 }}>
-          <AlertDialog.Title>Create New {createDialog?.isDir ? 'Folder' : 'Request'}</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            Enter the name for the new {createDialog?.isDir ? 'folder' : 'request'}:
-          </AlertDialog.Description>
-
-          <Box mt="3">
-            <TextField.Root
-              value={createName}
-              onChange={(e: any) => setCreateName(e.target.value)}
-              placeholder={`${createDialog?.isDir ? 'Folder' : 'Request'} name`}
-              onKeyDown={(e: any) => {
-                if (e.key === 'Enter') confirmCreateNew();
-                if (e.key === 'Escape') setCreateDialog(null);
+      <Alert
+        isOpen={selectCollectionDialog}
+        onClose={() => setSelectCollectionDialog(false)}
+        title="Select Default Collection"
+        description="Please select a collection to use as your default workspace:"
+      >
+        <Box>
+          {collections.map(collection => (
+            <Flex
+              key={collection.id}
+              align="center"
+              gap="2"
+              p="2"
+              style={{
+                cursor: 'pointer',
+                borderRadius: '4px',
+                border: '1px solid var(--gray-6)'
               }}
-              autoFocus
-            />
-          </Box>
-
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button variant="solid" onClick={confirmCreateNew}>
-                Create
-              </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
+              className="hover:bg-gray-100"
+              onClick={() => selectCollection(collection.id)}
+              mb="2"
+            >
+              <Text size="2">{collection.name}</Text>
+              <Text size="1" color="gray">{collection.path}</Text>
+            </Flex>
+          ))}
+        </Box>
+      </Alert>
     </Flex>
   );
 }

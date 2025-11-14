@@ -3,7 +3,7 @@ import {Box, Flex, Theme} from "@radix-ui/themes";
 import "./style.css";
 import {ThemeProvider} from "next-themes";
 import {Header} from "./components/Header";
-import {History} from "./components/History";
+import {FileTree} from "./components/FileTree";
 
 function App() {
   return (
@@ -18,7 +18,7 @@ function App() {
         <Header/>
         <Flex>
           <Box width="200px">
-            <History/>
+            <FileTree/>
           </Box>
           <Box width="100%" p="2">
             <HttpClient/>

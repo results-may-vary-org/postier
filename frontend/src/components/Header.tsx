@@ -1,25 +1,13 @@
 import {Box, Flex, Select, Separator, IconButton, Popover, Text, Switch} from "@radix-ui/themes";
 import {useTheme} from "next-themes";
-import {useEffect, useState} from "react";
 import {MixerHorizontalIcon} from "@radix-ui/react-icons";
 import Logo from "../assets/images/postier.svg";
-
-export type Theme = 'system' | 'dark' | 'light';
-export const AUTO_SAVE_KEY = 'postier-auto-save';
+import {useCollectionStore} from "../stores/store";
+import {Theme} from "../types/common";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
-  const [autoSave, setAutoSave] = useState(true);
-
-  useEffect(() => {
-    const savedAutoSave = localStorage.getItem(AUTO_SAVE_KEY);
-    if (savedAutoSave !== null) setAutoSave(JSON.parse(savedAutoSave));
-  }, []);
-
-  const handleAutoSaveChange = (checked: boolean) => {
-    setAutoSave(checked);
-    localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(checked));
-  };
+  const { autoSave, setAutoSave } = useCollectionStore();
 
   return (
     <Box height="40px">
@@ -51,7 +39,7 @@ export function Header() {
 
               <Flex align="center" justify="between">
                 <Text size="2">Auto-save on send</Text>
-                <Switch checked={autoSave} onCheckedChange={handleAutoSaveChange} />
+                <Switch checked={autoSave} onCheckedChange={setAutoSave} />
               </Flex>
             </Flex>
           </Popover.Content>

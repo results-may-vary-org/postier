@@ -1,7 +1,7 @@
-import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState} from 'react';
-import { MakeRequest } from '../../wailsjs/go/main/App';
+import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect} from 'react';
+import { MakeRequest, LoadPostierRequest, SavePostierRequest } from '../../wailsjs/go/main/App';
 import { main } from '../../wailsjs/go/models';
-import { PlusIcon, TrashIcon, PaperPlaneIcon } from '@radix-ui/react-icons';
+import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon } from '@radix-ui/react-icons';
 import {
   Badge,
   Box,
@@ -12,22 +12,26 @@ import {
   Select,
   Tabs,
   TextArea,
-  TextField
+  TextField,
+  Text
 } from "@radix-ui/themes";
 import HTTPResponse = main.HTTPResponse;
+import {BodyType, KeyValue} from "../types/common";
+import { useCollectionStore } from '../stores/store';
+import { Alert } from './Alert';
 
-type BodyType = 'json' | 'text' | 'none' | 'xml' | 'sparql';
-
-interface KeyValue {
-  key: string;
-  value: string;
+interface Props {
+  onSaveRequest?: () => void;
 }
 
-export function HttpClient() {
+export function HttpClient({ onSaveRequest }: Props = {}) {
+  const { collections, selectedCollection, currentFile, autoSave, setCurrentFile, resetCurrentFile } = useCollectionStore();
+
   const requestSectionRef = useRef<HTMLDivElement>(null);
   const responseTextAreaRef = useRef<HTMLTextAreaElement>(null);
   const responseHeaderListRef = useRef<HTMLDivElement>(null);
   const responseCookieListRef = useRef<HTMLDivElement>(null);
+
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('');
   const [headers, setHeaders] = useState<KeyValue[]>([]);
@@ -37,6 +41,231 @@ export function HttpClient() {
   const [response, setResponse] = useState<HTTPResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [responseBody, setResponseBody] = useState('');
+
+  // New states for save management
+  const [isSaved, setIsSaved] = useState(true);
+  const [requestName, setRequestName] = useState('');
+  const [requestDescription, setRequestDescription] = useState('');
+  const [saveAsDialog, setSaveAsDialog] = useState(false);
+  const [saveAsFileName, setSaveAsFileName] = useState('');
+
+  // Load current file from store on component mount
+  useEffect(() => {
+    if (currentFile) {
+      loadRequestFromFile(currentFile);
+    }
+  }, []);
+
+  // Listen for file load events from History component
+  useEffect(() => {
+    const handleFileLoad = (event: any) => {
+      const { filePath } = event.detail;
+      loadRequestFromFile(filePath);
+    };
+
+    const handleClearRequest = () => {
+      clearRequest();
+    };
+
+    window.addEventListener('postier-load-file', handleFileLoad);
+    window.addEventListener('postier-clear-request', handleClearRequest);
+
+    return () => {
+      window.removeEventListener('postier-load-file', handleFileLoad);
+      window.removeEventListener('postier-clear-request', handleClearRequest);
+    };
+  }, []);
+
+  // Watch for changes to mark as unsaved
+  useEffect(() => {
+    if (currentFile && (method !== 'GET' || url !== '' || headers.length > 0 || queryParams.length > 0 || body !== '' || bodyType !== 'none' || requestName !== '' || requestDescription !== '')) {
+      setIsSaved(false);
+    }
+  }, [method, url, headers, queryParams, body, bodyType, requestName, requestDescription, currentFile]);
+
+  // Load request from file
+  const loadRequestFromFile = async (filePath: string) => {
+    try {
+      const request = await LoadPostierRequest(filePath);
+
+      setCurrentFile(filePath);
+      setRequestName(request.name);
+      setRequestDescription(request.description);
+      setMethod(request.method);
+      setUrl(request.url);
+
+      // Convert headers object to KeyValue array
+      const headersArray = Object.entries(request.headers || {}).map(([key, value]) => ({
+        key,
+        value: value
+      }));
+      setHeaders(headersArray);
+
+      // Convert query object to KeyValue array
+      const queryArray = Object.entries(request.query || {}).map(([key, value]) => ({
+        key,
+        value: value
+      }));
+      setQueryParams(queryArray);
+
+      setBody(request.body);
+
+      // Set body type from saved data, with fallback to content type detection
+      if (request.bodyType) {
+        setBodyType(request.bodyType as BodyType);
+      }
+
+      if (!request.bodyType && request.response) {
+        setBodyType('none');
+      }
+
+      // Restore response if available
+      if (request.response) {
+        setResponse(request.response);
+        setResponseBody(generateResponseContent(request.response));
+      } else {
+        setResponse(null);
+        setResponseBody('');
+      }
+
+      setIsSaved(true);
+    } catch (error) {
+      console.error('Failed to load request from file:', error);
+    }
+  };
+
+  // Clear request form (for when clicking on folders/collections)
+  const clearRequest = () => {
+    resetCurrentFile();
+    setRequestName('');
+    setRequestDescription('');
+    setMethod('GET');
+    setUrl('');
+    setHeaders([]);
+    setQueryParams([]);
+    setBody('');
+    setBodyType('none');
+    setResponse(null);
+    setResponseBody('');
+    setIsSaved(true);
+  };
+
+  // Open save as dialog
+  const openSaveAsDialog = () => {
+    setSaveAsFileName('');
+    setSaveAsDialog(true);
+  };
+
+  // Confirm save as
+  const confirmSaveAs = async () => {
+    if (!saveAsFileName.trim()) {
+      setSaveAsDialog(false);
+      return;
+    }
+
+    try {
+      if (!selectedCollection) {
+        throw new Error('No collection selected');
+      }
+
+      // Find the selected collection
+      const currentCollection = collections.find((c: any) => c.id === selectedCollection);
+
+      if (!currentCollection) {
+        throw new Error('Selected collection not found');
+      }
+
+      const fileName = saveAsFileName.trim().endsWith('.postier')
+        ? saveAsFileName.trim()
+        : saveAsFileName.trim() + '.postier';
+
+      const filePath = `${currentCollection.path}/${fileName}`;
+
+      await saveRequest(filePath);
+      setSaveAsDialog(false);
+    } catch (error) {
+      console.error('Failed to save as:', error);
+      alert('Failed to save as: ' + error);
+    }
+  };
+
+  // Save request to file
+  const saveRequest = useCallback(async (filePath?: string, responseToSave?: HTTPResponse | null) => {
+    try {
+      if (!selectedCollection && !filePath) {
+        throw new Error('No collection selected and no file path provided');
+      }
+
+      // Build headers object
+      const headersObj: Record<string, string> = {};
+      headers.forEach(header => {
+        if (header.key && header.value) {
+          headersObj[header.key] = header.value;
+        }
+      });
+
+      // Add content type based on body type
+      if (bodyType === 'json') headersObj['Content-Type'] = 'application/json';
+      if (bodyType === 'text') headersObj['Content-Type'] = 'text/plain';
+      if (bodyType === 'xml') headersObj['Content-Type'] = 'application/xml';
+      if (bodyType === 'sparql') headersObj['Content-Type'] = 'application/sparql-query';
+
+      // Build query object
+      const queryObj: Record<string, string> = {};
+      queryParams.forEach(param => {
+        if (param.key && param.value) {
+          queryObj[param.key] = param.value;
+        }
+      });
+
+      const requestData = {
+        name: requestName || 'Untitled Request',
+        description: requestDescription || '',
+        method,
+        url,
+        headers: headersObj,
+        body: bodyType === 'none' ? '' : body,
+        bodyType,
+        query: queryObj,
+        response: responseToSave !== undefined ? responseToSave : response,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      const request = new main.PostierRequest(requestData);
+
+      const saveFilePath = filePath || currentFile;
+
+      await SavePostierRequest(saveFilePath!, request);
+
+      setCurrentFile(saveFilePath!);
+      setIsSaved(true);
+
+      if (onSaveRequest) {
+        onSaveRequest();
+      }
+    } catch (error) {
+      console.error('Failed to save request:', error);
+      alert('Failed to save request: ' + error);
+    }
+  }, [method, url, headers, queryParams, body, bodyType, requestName, requestDescription, currentFile, response, onSaveRequest]);
+
+  // Handle Ctrl+S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        if (currentFile) {
+          saveRequest();
+        } else {
+          openSaveAsDialog();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentFile, saveRequest]);
 
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
@@ -100,6 +329,14 @@ export function HttpClient() {
       const result = await MakeRequest(request);
       setResponse(result);
       setResponseBody(generateResponseContent(result));
+
+      if (currentFile && autoSave) {
+        // Auto-save the response if auto-save is enabled
+        await saveRequest(undefined, result);
+      } else if (currentFile && !autoSave) {
+        // Mark as unsaved if auto-save is disabled
+        setIsSaved(false);
+      }
     } catch (error) {
       console.error('Request failed:', error);
     } finally {
@@ -208,7 +445,26 @@ export function HttpClient() {
   return (
     <Box>
       <Section id="request" pt="2" pb="2" ref={requestSectionRef}>
-        <Flex gap="2" wrap>
+        <Flex justify="between" align="center" mb="2">
+          <Flex align="center" gap="2">
+            <Text size="1" color="gray">
+              {currentFile ? currentFile.split('/').pop()?.replace(".postier", "") : "Request isn't attached to a file"}
+            </Text>
+          </Flex>
+          <Flex align="center" gap="2">
+            <Box>
+              {isSaved ? (
+                <CheckCircledIcon color="green" />
+              ) : (
+                <CrossCircledIcon color="red" />
+              )}
+            </Box>
+            <Text size="1" color="gray">
+              {isSaved ? "Saved" : "Unsaved"}
+            </Text>
+          </Flex>
+        </Flex>
+        <Flex gap="2">
           <Select.Root value={method} onValueChange={setMethod}>
             <Select.Trigger/>
             <Select.Content position="popper">
@@ -265,7 +521,7 @@ export function HttpClient() {
             </Box>
             <Box height="200px" overflowY="auto">
               {headers.map((header, index) => (
-                <Flex gap="2" wrap pb="2" key={index}>
+                <Flex gap="2" pb="2" key={index}>
                   <Box width="100%">
                     <TextField.Root
                       type="text"
@@ -298,7 +554,7 @@ export function HttpClient() {
             </Box>
             <Box height="200px" overflowY="auto">
               {queryParams.map((param, index) => (
-                <Flex gap="2" wrap pb="2" key={index}>
+                <Flex gap="2" pb="2" key={index}>
                   <Box width="100%">
                     <TextField.Root
                       type="text"
@@ -401,6 +657,31 @@ export function HttpClient() {
           </Tabs.Content>
         </Tabs.Root>
       </Section>
+
+      <Alert
+        isOpen={saveAsDialog}
+        onClose={() => setSaveAsDialog(false)}
+        title="Save Request"
+        description="Enter a name for your request file:"
+        actions={[
+          {
+            label: 'Save',
+            onClick: confirmSaveAs,
+            color: 'blue'
+          }
+        ]}
+      >
+        <TextField.Root
+          value={saveAsFileName}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setSaveAsFileName(e.target.value)}
+          placeholder="Request name"
+          onKeyDown={(e: any) => {
+            if (e.key === 'Enter') confirmSaveAs();
+            if (e.key === 'Escape') setSaveAsDialog(false);
+          }}
+          autoFocus
+        />
+      </Alert>
     </Box>
   );
 }
