@@ -40,33 +40,7 @@ export function HttpClient() {
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [saveAsFileName, setSaveAsFileName] = useState('');
 
-  // todo: Load current file from store on component mount
-  useEffect(() => {
-    if (currentFilePath) {
-      loadRequestFromFile(currentFilePath);
-    }
-  }, []);
-
-  // todo: Listen for file load events from History component
-  useEffect(() => {
-    const handleFileLoad = (event: any) => {
-      const { filePath } = event.detail;
-      loadRequestFromFile(filePath);
-    };
-
-    const handleClearRequest = () => {
-      clearRequest();
-    };
-
-    window.addEventListener('postier-load-file', handleFileLoad);
-    window.addEventListener('postier-clear-request', handleClearRequest);
-
-    return () => {
-      window.removeEventListener('postier-load-file', handleFileLoad);
-      window.removeEventListener('postier-clear-request', handleClearRequest);
-    };
-  }, []);
-
+  // utility to deeply check header and query
   const arraysEqual = (a: KeyValue[], b: KeyValue[]) => {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
@@ -75,38 +49,7 @@ export function HttpClient() {
     return true;
   }
 
-  // ok: Watch for changes to mark as unsaved
-  useEffect(() => {
-    if (currentFilePath) {
-      // todo: maybe useMemo some day, but we also need to reload it if the user make any change on the file by hand
-      LoadPostierRequest(currentFilePath).then((fileRequest: main.PostierRequest) => {
-        const headersArray = Object.entries(fileRequest.headers || {}).map(([key, value]) => ({ key, value }));
-        const queryArray = Object.entries(fileRequest.query || {}).map(([key, value]) => ({ key, value }));
-
-        const sortFn = (x: KeyValue, y: KeyValue) => x.key.localeCompare(y.key) || x.value.localeCompare(y.value);
-
-        headersArray.sort(sortFn);
-        queryArray.sort(sortFn);
-        const stateHeaders = [...headers].sort(sortFn);
-        const stateQuery = [...queryParams].sort(sortFn);
-
-        const headersIsEqual = arraysEqual(headersArray, stateHeaders);
-        const queryIsEqual = arraysEqual(queryArray, stateQuery);
-
-        setIsSaved(
-          fileRequest.body === body &&
-          fileRequest.bodyType === bodyType &&
-          fileRequest.method === method &&
-          JSON.stringify(fileRequest.response) === JSON.stringify(response) &&
-          fileRequest.url === url &&
-          headersIsEqual &&
-          queryIsEqual
-        )
-      })
-    }
-  }, [method, url, headers, queryParams, body, bodyType, currentFilePath]);
-
-  // ok: Load request from file
+  // Load request from file
   const loadRequestFromFile = async (filePath: string) => {
     try {
       const request = await LoadPostierRequest(filePath);
@@ -146,7 +89,7 @@ export function HttpClient() {
     }
   };
 
-  // ok: Clear request form
+  // Clear request form
   const clearRequest = () => {
     resetCurrentFilePath();
     setMethod('GET');
@@ -160,7 +103,7 @@ export function HttpClient() {
     setIsSaved(false);
   };
 
-  // ok: Open save as dialog
+  // Open save as dialog
   const openSaveAsDialog = () => {
     setSaveAsFileName('');
     setSaveAsDialogOpen(true);
@@ -256,58 +199,34 @@ export function HttpClient() {
     }
   }, [method, url, headers, queryParams, body, bodyType, currentFilePath, response]);
 
-  // ok: Handle Ctrl+S
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        if (currentFilePath) {
-          saveRequest();
-        } else {
-          openSaveAsDialog();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentFilePath, saveRequest]);
-
-  // ok:
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
   };
 
-  // ok:
   const updateHeader = (index: number, field: 'key' | 'value', value: string) => {
     const newHeaders = [...headers];
     newHeaders[index][field] = value;
     setHeaders(newHeaders);
   };
 
-  // ok:
   const removeHeader = (index: number) => {
     setHeaders(headers.filter((_, i) => i !== index));
   };
 
-  // ok:
   const addQueryParam = () => {
     setQueryParams([...queryParams, { key: '', value: '' }]);
   };
 
-  // ok:
   const updateQueryParam = (index: number, field: 'key' | 'value', value: string) => {
     const newQueryParams = [...queryParams];
     newQueryParams[index][field] = value;
     setQueryParams(newQueryParams);
   };
 
-  // ok:
   const removeQueryParam = (index: number) => {
     setQueryParams(queryParams.filter((_, i) => i !== index));
   };
 
-  // ok:
   const sendRequest = async () => {
     setLoading(true);
     setResponse(null);
@@ -355,7 +274,6 @@ export function HttpClient() {
     }
   };
 
-  // ok:
   const formatSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -364,7 +282,6 @@ export function HttpClient() {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
-  // ok:
   const generateResponseTag = () => {
     if (!response) return <Badge color="gray">000</Badge>;
     const responseStatus = response.statusCode.toString().slice(0, 1) ?? 0;
@@ -382,7 +299,6 @@ export function HttpClient() {
     }
   }
 
-  // ok:
   const generateResponseTime = () => {
     // response.duration is in Microseconds
     if (!response) return <Badge color="gray">0 ms</Badge>;
@@ -393,28 +309,24 @@ export function HttpClient() {
     return <Badge color="red">{responseTimeInMilli} ms</Badge>;
   }
 
-  // ok:
   const generateHeadersBadge = () => {
     if (headers.length === 0) return <Badge color="gray" ml="1">0</Badge>
     const fullHeaders = headers.filter(header => header.key && header.value);
     return <Badge color="green" ml="1">{fullHeaders.length}</Badge>;
   }
 
-  // ok:
   const generateQueryBadge = () => {
     if (queryParams.length === 0) return <Badge color="gray" ml="1">0</Badge>
     const fullQuery = queryParams.filter(header => header.key && header.value);
     return <Badge color="green" ml="1">{fullQuery.length}</Badge>;
   }
 
-  // ok:
   const generateBodyBadge = () => {
     if (bodyType === "none") return <Badge color="gray" ml="1">no</Badge>;
     if (body.length === 0) return <Badge color="orange" ml="1">no</Badge>;
     return <Badge color="green" ml="1">yes</Badge>;
   }
 
-  // ok:
   const calculateResponseAreaHeight = useCallback(() => {
     const requestSectionHeight = requestSectionRef?.current?.offsetHeight ?? 0;
     const height = window.innerHeight - requestSectionHeight - (96 + 40); // 96 is the other element, padding and so on
@@ -423,7 +335,6 @@ export function HttpClient() {
     if (responseHeaderListRef.current) responseHeaderListRef.current.style.height = `${height}px`;
   }, []);
 
-  // ok:
   const generateResponseContent = (response: main.HTTPResponse | null): string => {
     if (!response || !response.body) return "";
 
@@ -441,7 +352,6 @@ export function HttpClient() {
     return response.body;
   }
 
-  // ok:
   const calculateHeaderLength = () => {
     if (response?.headers) {
       return `(${Object.entries(response.headers).length})`;
@@ -449,22 +359,91 @@ export function HttpClient() {
     return null;
   }
 
-  // ok:
   const calculateCookieLength = () => {
     if (response?.cookies) {
       return `(${Object.entries(response.cookies).length})`;
     }
     return null;
   }
+  
+  // Load current file from store on component mount
+  useEffect(() => {
+    if (currentFilePath) {
+      loadRequestFromFile(currentFilePath);
+    }
+  }, []);
 
-  // ok:
+  // Listen for file load events from History component
+  // todo: refacto with a store
+  useEffect(() => {
+    const handleFileLoad = (event: any) => {
+      const { filePath } = event.detail;
+      loadRequestFromFile(filePath);
+    };
+
+    window.addEventListener('postier-load-file', handleFileLoad);
+    window.addEventListener('postier-clear-request', clearRequest);
+
+    return () => {
+      window.removeEventListener('postier-load-file', handleFileLoad);
+      window.removeEventListener('postier-clear-request', clearRequest);
+    };
+  }, []);
+
+  // Watch for changes to mark as unsaved
+  useEffect(() => {
+    if (currentFilePath) {
+      // todo: maybe useMemo some day, but we also need to reload it if the user make any change on the file by hand
+      LoadPostierRequest(currentFilePath).then((fileRequest: main.PostierRequest) => {
+        const headersArray = Object.entries(fileRequest.headers || {}).map(([key, value]) => ({ key, value }));
+        const queryArray = Object.entries(fileRequest.query || {}).map(([key, value]) => ({ key, value }));
+
+        const sortFn = (x: KeyValue, y: KeyValue) => x.key.localeCompare(y.key) || x.value.localeCompare(y.value);
+
+        headersArray.sort(sortFn);
+        queryArray.sort(sortFn);
+        const stateHeaders = [...headers].sort(sortFn);
+        const stateQuery = [...queryParams].sort(sortFn);
+
+        const headersIsEqual = arraysEqual(headersArray, stateHeaders);
+        const queryIsEqual = arraysEqual(queryArray, stateQuery);
+
+        setIsSaved(
+          fileRequest.body === body &&
+          fileRequest.bodyType === bodyType &&
+          fileRequest.method === method &&
+          JSON.stringify(fileRequest.response) === JSON.stringify(response) &&
+          fileRequest.url === url &&
+          headersIsEqual &&
+          queryIsEqual
+        )
+      })
+    }
+  }, [method, url, headers, queryParams, body, bodyType, currentFilePath]);
+
+  // Handle Ctrl+S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        if (currentFilePath) {
+          saveRequest();
+        } else {
+          openSaveAsDialog();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentFilePath, saveRequest]);
+
   useLayoutEffect(() => {
     calculateResponseAreaHeight();
     window.addEventListener("resize", calculateResponseAreaHeight);
     return () => window.removeEventListener("resize", calculateResponseAreaHeight);
   }, [calculateResponseAreaHeight]);
 
-  // ok:
   return (
     <Box>
       <Section id="request" pt="2" pb="2" ref={requestSectionRef}>
