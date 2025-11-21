@@ -15,13 +15,12 @@ import {
   TextField,
   Text
 } from "@radix-ui/themes";
-import HTTPResponse = main.HTTPResponse;
 import {BodyType, KeyValue} from "../types/common";
 import { useCollectionStore } from "../stores/store";
 import { Alert } from "./Alert";
 
 export function HttpClient() {
-  const { collections, selectedCollection, currentFile, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
+  const { collections, selectedCollection, currentFilePath, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
 
   const requestSectionRef = useRef<HTMLDivElement>(null);
   const responseTextAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -34,7 +33,7 @@ export function HttpClient() {
   const [queryParams, setQueryParams] = useState<KeyValue[]>([]);
   const [body, setBody] = useState('');
   const [bodyType, setBodyType] = useState<BodyType>('none');
-  const [response, setResponse] = useState<HTTPResponse | null>(null);
+  const [response, setResponse] = useState<main.HTTPResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [responseBody, setResponseBody] = useState('');
   const [isSaved, setIsSaved] = useState(false);
@@ -43,8 +42,8 @@ export function HttpClient() {
 
   // todo: Load current file from store on component mount
   useEffect(() => {
-    if (currentFile) {
-      loadRequestFromFile(currentFile);
+    if (currentFilePath) {
+      loadRequestFromFile(currentFilePath);
     }
   }, []);
 
@@ -68,14 +67,46 @@ export function HttpClient() {
     };
   }, []);
 
-  // todo: Watch for changes to mark as unsaved
-  useEffect(() => {
-    if (currentFile && (method !== 'GET' || url !== '' || headers.length > 0 || queryParams.length > 0 || body !== '' || bodyType !== 'none')) {
-      setIsSaved(false);
+  const arraysEqual = (a: KeyValue[], b: KeyValue[]) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].key !== b[i].key || a[i].value !== b[i].value) return false;
     }
-  }, [method, url, headers, queryParams, body, bodyType, currentFile]);
+    return true;
+  }
 
-  // todo: Load request from file
+  // ok: Watch for changes to mark as unsaved
+  useEffect(() => {
+    if (currentFilePath) {
+      // todo: maybe useMemo some day, but we also need to reload it if the user make any change on the file by hand
+      LoadPostierRequest(currentFilePath).then((fileRequest: main.PostierRequest) => {
+        const headersArray = Object.entries(fileRequest.headers || {}).map(([key, value]) => ({ key, value }));
+        const queryArray = Object.entries(fileRequest.query || {}).map(([key, value]) => ({ key, value }));
+
+        const sortFn = (x: KeyValue, y: KeyValue) => x.key.localeCompare(y.key) || x.value.localeCompare(y.value);
+
+        headersArray.sort(sortFn);
+        queryArray.sort(sortFn);
+        const stateHeaders = [...headers].sort(sortFn);
+        const stateQuery = [...queryParams].sort(sortFn);
+
+        const headersIsEqual = arraysEqual(headersArray, stateHeaders);
+        const queryIsEqual = arraysEqual(queryArray, stateQuery);
+
+        setIsSaved(
+          fileRequest.body === body &&
+          fileRequest.bodyType === bodyType &&
+          fileRequest.method === method &&
+          JSON.stringify(fileRequest.response) === JSON.stringify(response) &&
+          fileRequest.url === url &&
+          headersIsEqual &&
+          queryIsEqual
+        )
+      })
+    }
+  }, [method, url, headers, queryParams, body, bodyType, currentFilePath]);
+
+  // ok: Load request from file
   const loadRequestFromFile = async (filePath: string) => {
     try {
       const request = await LoadPostierRequest(filePath);
@@ -85,31 +116,22 @@ export function HttpClient() {
       setUrl(request.url);
 
       // Convert headers object to KeyValue array
-      const headersArray = Object.entries(request.headers || {}).map(([key, value]) => ({
-        key,
-        value: value
-      }));
+      const headersArray = Object.entries(request.headers || {}).map(([key, value]) => ({ key, value: value }));
       setHeaders(headersArray);
 
       // Convert query object to KeyValue array
-      const queryArray = Object.entries(request.query || {}).map(([key, value]) => ({
-        key,
-        value: value
-      }));
+      const queryArray = Object.entries(request.query || {}).map(([key, value]) => ({ key, value: value }));
       setQueryParams(queryArray);
 
       setBody(request.body);
 
-      // Set body type from saved data, with fallback to content type detection
-      if (request.bodyType) {
-        setBodyType(request.bodyType as BodyType);
-      }
-
-      if (!request.bodyType && request.response) {
+      // Set body type from saved data w/ fallback
+      if ((request.bodyType as BodyType) === request.bodyType) {
+        setBodyType(request.bodyType);
+      } else {
         setBodyType('none');
       }
 
-      // Restore response if available
       if (request.response) {
         setResponse(request.response);
         setResponseBody(generateResponseContent(request.response));
@@ -178,7 +200,7 @@ export function HttpClient() {
   };
 
   // todo: Save request to file
-  const saveRequest = useCallback(async (filePath?: string, responseToSave?: HTTPResponse | null) => {
+  const saveRequest = useCallback(async (filePath?: string, responseToSave?: main.HTTPResponse | null) => {
     try {
       if (!selectedCollection && !filePath) {
         throw new Error('No collection selected and no file path provided');
@@ -221,7 +243,7 @@ export function HttpClient() {
 
       const request = new main.PostierRequest(requestData);
 
-      const saveFilePath = filePath || currentFile;
+      const saveFilePath = filePath || currentFilePath;
 
       await SavePostierRequest(saveFilePath!, request);
 
@@ -232,14 +254,14 @@ export function HttpClient() {
       console.error('Failed to save request:', error);
       alert('Failed to save request: ' + error);
     }
-  }, [method, url, headers, queryParams, body, bodyType, currentFile, response]);
+  }, [method, url, headers, queryParams, body, bodyType, currentFilePath, response]);
 
   // ok: Handle Ctrl+S
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
-        if (currentFile) {
+        if (currentFilePath) {
           saveRequest();
         } else {
           openSaveAsDialog();
@@ -249,7 +271,7 @@ export function HttpClient() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentFile, saveRequest]);
+  }, [currentFilePath, saveRequest]);
 
   // ok:
   const addHeader = () => {
@@ -402,7 +424,7 @@ export function HttpClient() {
   }, []);
 
   // ok:
-  const generateResponseContent = (response: HTTPResponse | null): string => {
+  const generateResponseContent = (response: main.HTTPResponse | null): string => {
     if (!response || !response.body) return "";
 
     if (response.headers) {
@@ -449,7 +471,7 @@ export function HttpClient() {
         <Flex justify="between" align="center" mb="2">
           <Flex align="center" gap="2">
             <Text size="1" color="gray">
-              {currentFile ? currentFile.split('/').pop()?.replace(".postier", "") : "Request isn't attached to a file"}
+              {currentFilePath ? currentFilePath.split('/').pop()?.replace(".postier", "") : "Request isn't attached to a file"}
             </Text>
           </Flex>
           <Flex align="center" gap="2">

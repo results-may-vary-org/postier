@@ -15,7 +15,7 @@ export function FileTree() {
     collections,
     expandedNodes,
     selectedCollection,
-    currentFile,
+    currentFilePath: currentFile,
     setCollections,
     addCollection,
     removeCollection,
