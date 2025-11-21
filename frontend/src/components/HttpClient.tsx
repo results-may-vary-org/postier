@@ -1,7 +1,7 @@
-import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect} from 'react';
-import { MakeRequest, LoadPostierRequest, SavePostierRequest } from '../../wailsjs/go/main/App';
-import { main } from '../../wailsjs/go/models';
-import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon } from '@radix-ui/react-icons';
+import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect} from "react";
+import { MakeRequest, LoadPostierRequest, SavePostierRequest } from "../../wailsjs/go/main/App";
+import { main } from "../../wailsjs/go/models";
+import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon } from "@radix-ui/react-icons";
 import {
   Badge,
   Box,
@@ -17,15 +17,11 @@ import {
 } from "@radix-ui/themes";
 import HTTPResponse = main.HTTPResponse;
 import {BodyType, KeyValue} from "../types/common";
-import { useCollectionStore } from '../stores/store';
-import { Alert } from './Alert';
+import { useCollectionStore } from "../stores/store";
+import { Alert } from "./Alert";
 
-interface Props {
-  onSaveRequest?: () => void;
-}
-
-export function HttpClient({ onSaveRequest }: Props = {}) {
-  const { collections, selectedCollection, currentFile, autoSave, setCurrentFile, resetCurrentFile } = useCollectionStore();
+export function HttpClient() {
+  const { collections, selectedCollection, currentFile, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
 
   const requestSectionRef = useRef<HTMLDivElement>(null);
   const responseTextAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -41,22 +37,18 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
   const [response, setResponse] = useState<HTTPResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [responseBody, setResponseBody] = useState('');
-
-  // New states for save management
-  const [isSaved, setIsSaved] = useState(true);
-  const [requestName, setRequestName] = useState('');
-  const [requestDescription, setRequestDescription] = useState('');
-  const [saveAsDialog, setSaveAsDialog] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [saveAsFileName, setSaveAsFileName] = useState('');
 
-  // Load current file from store on component mount
+  // todo: Load current file from store on component mount
   useEffect(() => {
     if (currentFile) {
       loadRequestFromFile(currentFile);
     }
   }, []);
 
-  // Listen for file load events from History component
+  // todo: Listen for file load events from History component
   useEffect(() => {
     const handleFileLoad = (event: any) => {
       const { filePath } = event.detail;
@@ -76,21 +68,19 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     };
   }, []);
 
-  // Watch for changes to mark as unsaved
+  // todo: Watch for changes to mark as unsaved
   useEffect(() => {
-    if (currentFile && (method !== 'GET' || url !== '' || headers.length > 0 || queryParams.length > 0 || body !== '' || bodyType !== 'none' || requestName !== '' || requestDescription !== '')) {
+    if (currentFile && (method !== 'GET' || url !== '' || headers.length > 0 || queryParams.length > 0 || body !== '' || bodyType !== 'none')) {
       setIsSaved(false);
     }
-  }, [method, url, headers, queryParams, body, bodyType, requestName, requestDescription, currentFile]);
+  }, [method, url, headers, queryParams, body, bodyType, currentFile]);
 
-  // Load request from file
+  // todo: Load request from file
   const loadRequestFromFile = async (filePath: string) => {
     try {
       const request = await LoadPostierRequest(filePath);
 
-      setCurrentFile(filePath);
-      setRequestName(request.name);
-      setRequestDescription(request.description);
+      setCurrentFilePath(filePath);
       setMethod(request.method);
       setUrl(request.url);
 
@@ -134,11 +124,9 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     }
   };
 
-  // Clear request form (for when clicking on folders/collections)
+  // ok: Clear request form
   const clearRequest = () => {
-    resetCurrentFile();
-    setRequestName('');
-    setRequestDescription('');
+    resetCurrentFilePath();
     setMethod('GET');
     setUrl('');
     setHeaders([]);
@@ -147,19 +135,19 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     setBodyType('none');
     setResponse(null);
     setResponseBody('');
-    setIsSaved(true);
+    setIsSaved(false);
   };
 
-  // Open save as dialog
+  // ok: Open save as dialog
   const openSaveAsDialog = () => {
     setSaveAsFileName('');
-    setSaveAsDialog(true);
+    setSaveAsDialogOpen(true);
   };
 
-  // Confirm save as
+  // todo: Confirm save as
   const confirmSaveAs = async () => {
     if (!saveAsFileName.trim()) {
-      setSaveAsDialog(false);
+      setSaveAsDialogOpen(false);
       return;
     }
 
@@ -182,14 +170,14 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
       const filePath = `${currentCollection.path}/${fileName}`;
 
       await saveRequest(filePath);
-      setSaveAsDialog(false);
+      setSaveAsDialogOpen(false);
     } catch (error) {
       console.error('Failed to save as:', error);
       alert('Failed to save as: ' + error);
     }
   };
 
-  // Save request to file
+  // todo: Save request to file
   const saveRequest = useCallback(async (filePath?: string, responseToSave?: HTTPResponse | null) => {
     try {
       if (!selectedCollection && !filePath) {
@@ -219,8 +207,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
       });
 
       const requestData = {
-        name: requestName || 'Untitled Request',
-        description: requestDescription || '',
+        name: 'Untitled Request',
         method,
         url,
         headers: headersObj,
@@ -238,19 +225,16 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
 
       await SavePostierRequest(saveFilePath!, request);
 
-      setCurrentFile(saveFilePath!);
+      setCurrentFilePath(saveFilePath!);
       setIsSaved(true);
 
-      if (onSaveRequest) {
-        onSaveRequest();
-      }
     } catch (error) {
       console.error('Failed to save request:', error);
       alert('Failed to save request: ' + error);
     }
-  }, [method, url, headers, queryParams, body, bodyType, requestName, requestDescription, currentFile, response, onSaveRequest]);
+  }, [method, url, headers, queryParams, body, bodyType, currentFile, response]);
 
-  // Handle Ctrl+S
+  // ok: Handle Ctrl+S
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 's') {
@@ -267,34 +251,41 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentFile, saveRequest]);
 
+  // ok:
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
   };
 
+  // ok:
   const updateHeader = (index: number, field: 'key' | 'value', value: string) => {
     const newHeaders = [...headers];
     newHeaders[index][field] = value;
     setHeaders(newHeaders);
   };
 
+  // ok:
   const removeHeader = (index: number) => {
     setHeaders(headers.filter((_, i) => i !== index));
   };
 
+  // ok:
   const addQueryParam = () => {
     setQueryParams([...queryParams, { key: '', value: '' }]);
   };
 
+  // ok:
   const updateQueryParam = (index: number, field: 'key' | 'value', value: string) => {
     const newQueryParams = [...queryParams];
     newQueryParams[index][field] = value;
     setQueryParams(newQueryParams);
   };
 
+  // ok:
   const removeQueryParam = (index: number) => {
     setQueryParams(queryParams.filter((_, i) => i !== index));
   };
 
+  // ok:
   const sendRequest = async () => {
     setLoading(true);
     setResponse(null);
@@ -330,11 +321,9 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
       setResponse(result);
       setResponseBody(generateResponseContent(result));
 
-      if (currentFile && autoSave) {
-        // Auto-save the response if auto-save is enabled
+      if (autoSave) {
         await saveRequest(undefined, result);
-      } else if (currentFile && !autoSave) {
-        // Mark as unsaved if auto-save is disabled
+      } else {
         setIsSaved(false);
       }
     } catch (error) {
@@ -344,6 +333,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     }
   };
 
+  // ok:
   const formatSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -352,6 +342,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
+  // ok:
   const generateResponseTag = () => {
     if (!response) return <Badge color="gray">000</Badge>;
     const responseStatus = response.statusCode.toString().slice(0, 1) ?? 0;
@@ -369,6 +360,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     }
   }
 
+  // ok:
   const generateResponseTime = () => {
     // response.duration is in Microseconds
     if (!response) return <Badge color="gray">0 ms</Badge>;
@@ -379,24 +371,28 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     return <Badge color="red">{responseTimeInMilli} ms</Badge>;
   }
 
+  // ok:
   const generateHeadersBadge = () => {
     if (headers.length === 0) return <Badge color="gray" ml="1">0</Badge>
     const fullHeaders = headers.filter(header => header.key && header.value);
     return <Badge color="green" ml="1">{fullHeaders.length}</Badge>;
   }
 
+  // ok:
   const generateQueryBadge = () => {
     if (queryParams.length === 0) return <Badge color="gray" ml="1">0</Badge>
     const fullQuery = queryParams.filter(header => header.key && header.value);
     return <Badge color="green" ml="1">{fullQuery.length}</Badge>;
   }
 
+  // ok:
   const generateBodyBadge = () => {
     if (bodyType === "none") return <Badge color="gray" ml="1">no</Badge>;
     if (body.length === 0) return <Badge color="orange" ml="1">no</Badge>;
     return <Badge color="green" ml="1">yes</Badge>;
   }
 
+  // ok:
   const calculateResponseAreaHeight = useCallback(() => {
     const requestSectionHeight = requestSectionRef?.current?.offsetHeight ?? 0;
     const height = window.innerHeight - requestSectionHeight - (96 + 40); // 96 is the other element, padding and so on
@@ -405,6 +401,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     if (responseHeaderListRef.current) responseHeaderListRef.current.style.height = `${height}px`;
   }, []);
 
+  // ok:
   const generateResponseContent = (response: HTTPResponse | null): string => {
     if (!response || !response.body) return "";
 
@@ -422,6 +419,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     return response.body;
   }
 
+  // ok:
   const calculateHeaderLength = () => {
     if (response?.headers) {
       return `(${Object.entries(response.headers).length})`;
@@ -429,6 +427,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     return null;
   }
 
+  // ok:
   const calculateCookieLength = () => {
     if (response?.cookies) {
       return `(${Object.entries(response.cookies).length})`;
@@ -436,12 +435,14 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
     return null;
   }
 
+  // ok:
   useLayoutEffect(() => {
     calculateResponseAreaHeight();
     window.addEventListener("resize", calculateResponseAreaHeight);
     return () => window.removeEventListener("resize", calculateResponseAreaHeight);
   }, [calculateResponseAreaHeight]);
 
+  // ok:
   return (
     <Box>
       <Section id="request" pt="2" pb="2" ref={requestSectionRef}>
@@ -454,9 +455,9 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
           <Flex align="center" gap="2">
             <Box>
               {isSaved ? (
-                <CheckCircledIcon color="green" />
+                <CheckCircledIcon color="green"/>
               ) : (
-                <CrossCircledIcon color="red" />
+                <CrossCircledIcon color="red"/>
               )}
             </Box>
             <Text size="1" color="gray">
@@ -659,8 +660,8 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
       </Section>
 
       <Alert
-        isOpen={saveAsDialog}
-        onClose={() => setSaveAsDialog(false)}
+        isOpen={saveAsDialogOpen}
+        onClose={() => setSaveAsDialogOpen(false)}
         title="Save Request"
         description="Enter a name for your request file:"
         actions={[
@@ -677,7 +678,7 @@ export function HttpClient({ onSaveRequest }: Props = {}) {
           placeholder="Request name"
           onKeyDown={(e: any) => {
             if (e.key === 'Enter') confirmSaveAs();
-            if (e.key === 'Escape') setSaveAsDialog(false);
+            if (e.key === 'Escape') setSaveAsDialogOpen(false);
           }}
           autoFocus
         />

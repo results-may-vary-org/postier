@@ -21,8 +21,8 @@ export function FileTree() {
     removeCollection,
     setSelectedCollection,
     resetSelectedCollection,
-    setCurrentFile,
-    resetCurrentFile,
+    setCurrentFilePath: setCurrentFile,
+    resetCurrentFilePath: resetCurrentFile,
     setExpandedNodes
   } = useCollectionStore();
 

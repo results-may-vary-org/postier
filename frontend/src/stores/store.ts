@@ -13,8 +13,8 @@ interface CollectionState {
   removeCollection: (collection: Collection) => void
   setSelectedCollection: (collection: string) => void
   resetSelectedCollection: () => void
-  setCurrentFile: (file: string) => void
-  resetCurrentFile: () => void
+  setCurrentFilePath: (file: string) => void
+  resetCurrentFilePath: () => void
   setExpandedNodes: (nodes: string[]) => void
   resetExpandedNodes: () => void
   setAutoSave: (autoSave: boolean) => void
@@ -36,8 +36,8 @@ export const useCollectionStore = create<CollectionState>()(
       setSelectedCollection: (collection: string) => set({ selectedCollection: collection }),
       resetSelectedCollection: () => set({ selectedCollection: '' }),
 
-      setCurrentFile: (file: string) => set({ currentFile: file }),
-      resetCurrentFile: () => set({ currentFile: '' }),
+      setCurrentFilePath: (file: string) => set({ currentFile: file }),
+      resetCurrentFilePath: () => set({ currentFile: '' }),
 
       setExpandedNodes: (nodes: string[]) => set({ expandedNodes: nodes }),
       resetExpandedNodes: () => set({ expandedNodes: [] }),
