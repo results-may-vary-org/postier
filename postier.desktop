@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Postier
+Comment=HTTP request with no bloat
+Exec=postier
+Icon=postier
+Type=Application
+Categories=Development
+StartupNotify=true
+

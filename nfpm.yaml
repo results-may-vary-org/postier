@@ -1,0 +1,41 @@
+name: "tape"
+arch: "amd64"
+platform: "linux"
+version: "${TAPE_VERSION}"
+section: "default"
+priority: "extra"
+maintainer: "Bouteiller [a2n] Alan <a2n.dev@pm.me>"
+description: |
+  Postier - http request with no bloat.
+vendor: "a2n"
+homepage: "https://github.com/results-may-vary-org/postier"
+license: "GPL3"
+contents:
+  - src: "./build/bin/postier"
+    dst: "/usr/bin/postier"
+    file_info:
+      mode: 0755
+  - src: "./build/appicon.png"
+    dst: "/usr/share/pixmaps/postier.png"
+    file_info:
+      mode: 0644
+  - src: "./postier.desktop"
+    dst: "/usr/share/applications/postier.desktop"
+    file_info:
+      mode: 0644
+overrides:
+  deb:
+    depends:
+      - libc6
+      - libgtk-3-0
+      - libwebkit2gtk-4.0-37
+  rpm:
+    depends:
+      - glibc
+      - gtk3
+      - webkit2gtk3
+  apk:
+    depends:
+      - musl
+      - gtk+3.0
+      - webkit2gtk
