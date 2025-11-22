@@ -97,7 +97,7 @@ jobs:
           ls -la build/bin/
 
           # Copy the versioned binary to the expected name
-          cp build/bin/tape-linux-amd64-${{ needs.get-tag.outputs.tag }} build/bin/tape
+          cp build/bin/tape-linux-amd64 build/bin/tape
           chmod +x build/bin/tape
 
           # Copy icon if it doesn't exist in the expected location
