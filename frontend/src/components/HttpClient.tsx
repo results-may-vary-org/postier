@@ -17,7 +17,7 @@ import {
 } from "@radix-ui/themes";
 import {BodyType, KeyValue} from "../types/common";
 import { useCollectionStore } from "../stores/store";
-import { Alert } from "./Alert";
+import { Alert, InfoAlert } from "./Alert";
 
 export function HttpClient() {
   const { collections, selectedCollection, currentFilePath, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
@@ -39,6 +39,8 @@ export function HttpClient() {
   const [isSaved, setIsSaved] = useState(false);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [noCollectionAlertOpen, setNoCollectionAlertOpen] = useState(false);
+  const [noCollectionAutoAlertOpen, setNoCollectionAutoAlertOpen] = useState(false);
+  const [noFileAlertOpen, setNoFileAlertOpen] = useState(false);
   const [filename, setFilename] = useState('');
 
   // utility to deeply check header and query
@@ -106,6 +108,10 @@ export function HttpClient() {
 
   // Open save as dialog
   const openSaveAsDialog = () => {
+    if (!selectedCollection) {
+      setNoCollectionAlertOpen(true);
+      return;
+    }
     setFilename('');
     setSaveAsDialogOpen(true);
   };
@@ -118,10 +124,10 @@ export function HttpClient() {
     }
 
     if (!selectedCollection) {
-        setSaveAsDialogOpen(false);
-        setNoCollectionAlertOpen(true);
-        return;
-      }
+      setSaveAsDialogOpen(false);
+      setNoCollectionAlertOpen(true);
+      return;
+    }
 
     try {
       // Find the selected collection
@@ -145,11 +151,19 @@ export function HttpClient() {
     }
   };
 
-  // hack: Save request to file
+  // Save request to file
   const saveRequest = useCallback(async (filePath?: string, responseToSave?: main.HTTPResponse | null) => {
     try {
-      if (!selectedCollection && !filePath) {
-        throw new Error('No collection selected and no file path provided');
+      if (!selectedCollection) {
+        setNoCollectionAutoAlertOpen(true);
+        return;
+      }
+
+      const saveFilePath = filePath || currentFilePath;
+
+      if (!saveFilePath.trim()) {
+        setNoFileAlertOpen(true);
+        return;
       }
 
       // Build headers object
@@ -174,8 +188,9 @@ export function HttpClient() {
         }
       });
 
+      const httpRegex = new RegExp("http(s*):\/\/");
       const requestData = {
-        name: 'Untitled Request',
+        name: `${method}@${url.replace(httpRegex, "")}`,
         method,
         url,
         headers: headersObj,
@@ -183,21 +198,17 @@ export function HttpClient() {
         bodyType,
         query: queryObj,
         response: responseToSave !== undefined ? responseToSave : response,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(), // todo: not use atm
         updatedAt: new Date().toISOString()
       };
 
       const request = new main.PostierRequest(requestData);
 
-      const saveFilePath = filePath || currentFilePath;
+      await SavePostierRequest(saveFilePath, request);
 
-      await SavePostierRequest(saveFilePath!, request);
-
-      setCurrentFilePath(saveFilePath!);
+      setCurrentFilePath(saveFilePath);
       setIsSaved(true);
-
     } catch (error) {
-      console.error('Failed to save request:', error);
       alert('Failed to save request: ' + error);
     }
   }, [method, url, headers, queryParams, body, bodyType, currentFilePath, response]);
@@ -688,7 +699,27 @@ export function HttpClient() {
         />
       </Alert>
 
-      
+      <InfoAlert
+        isOpen={noCollectionAlertOpen}
+        onClose={() => setNoCollectionAlertOpen(false)}
+        title="No collection"
+        description="You should select a collection first."
+      />
+
+      <InfoAlert
+        isOpen={noCollectionAutoAlertOpen}
+        onClose={() => setNoCollectionAutoAlertOpen(false)}
+        title="No collection"
+        description="You have autosave enable but no collection selected."
+      />
+
+      <InfoAlert
+        isOpen={noFileAlertOpen}
+        onClose={() => setNoFileAlertOpen(false)}
+        title="No file selected"
+        description="You should select a file first."
+      />
+
     </Box>
   );
 }
