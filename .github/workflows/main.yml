@@ -97,8 +97,8 @@ jobs:
           ls -la build/bin/
 
           # Copy the versioned binary to the expected name
-          cp build/bin/tape-linux-amd64 build/bin/tape
-          chmod +x build/bin/tape
+          cp build/bin/postier-linux-amd64 build/bin/postier
+          chmod +x build/bin/postier
 
           # Copy icon if it doesn't exist in the expected location
           if [ ! -f build/appicon.png ]; then
