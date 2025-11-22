@@ -1,80 +1,130 @@
-name: "build and publish cross"
+name: Build and Publish
 
-on: workflow_dispatch
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: read
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=4096"
 
 jobs:
-  check-version:
+  get-tag:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.get_tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Get latest tag
-        id: get_latest_tag
+        id: get_tag
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
-          echo "Latest tag: ${LATEST_TAG}"
+          tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "tag=$tag" >> $GITHUB_OUTPUT
 
-      - name: Extract version from tauri.conf.json
-        id: extract_version
-        run: |
-          VERSION=$(grep -o '"version": "[^"]*"' ./src-tauri/tauri.conf.json | cut -d '"' -f 4)
-          echo "CONF_VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "Config version: ${VERSION}"
-
-  publish-tauri:
-    permissions:
-      contents: write
+  build:
+    needs: get-tag
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: "macos-latest" # for Arm based macs (M1 and above).
-            args: "-v --target aarch64-apple-darwin"
-          - platform: "macos-latest" # for Intel based macs.
-            args: "-v --target x86_64-apple-darwin"
-          - platform: "ubuntu-22.04"
-            args: "-v "
-          - platform: "windows-latest"
-            args: "-v "
+        build:
+          - name: 'postier'
+            platform: 'linux/amd64'
+            platform_hyphen: 'linux-amd64'
+            os: 'ubuntu-latest'
+          - name: 'postier'
+            platform: 'windows/amd64'
+            platform_hyphen: 'windows-amd64'
+            os: 'windows-latest'
+          - name: 'postier'
+            platform: 'darwin/universal'
+            platform_hyphen: 'darwin-universal'
+            os: 'macos-latest'
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.build.os }}
+    env:
+      TAPE_VERSION: ${{ needs.get-tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: setup node
-        uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          node-version: lts/*
+          fetch-depth: 0
 
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
-          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          go-version: '1.23'
+          cache: true
 
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build wails
+        uses: dAppServer/wails-build-action@main
+        id: build
+        with:
+          build-cache: false
+          build-name: ${{ matrix.build.platform == 'darwin/universal' && matrix.build.name || format('{0}-{1}-{2}', matrix.build.name, matrix.build.platform_hyphen, needs.get-tag.outputs.tag) }}
+          build-platform: ${{ matrix.build.platform }}
+          package: true
+          nsis: ${{ matrix.build.platform == 'windows/amd64' }}
+          go-version: '1.23'
+          wails-version: 'v2.9.0'
+
+      - name: Setup nFPM (Linux only)
+        if: matrix.build.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          wget https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
+          tar -xzf nfpm_2.40.0_Linux_x86_64.tar.gz
+          sudo mv nfpm /usr/local/bin/
+          nfpm --version
 
-      - name: install frontend dependencies
-        working-directory: ./postier-app
-        run:  |
-          npm install -g pnpm
-          pnpm install
+      - name: Create Linux packages (Linux only)
+        if: matrix.build.os == 'ubuntu-latest'
+        run: |
+          # Verify binary exists and rename it
+          ls -la build/bin/
 
-      - name: build and publish
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Copy the versioned binary to the expected name
+          cp build/bin/tape-linux-amd64-${{ needs.get-tag.outputs.tag }} build/bin/tape
+          chmod +x build/bin/tape
+
+          # Copy icon if it doesn't exist in the expected location
+          if [ ! -f build/appicon.png ]; then
+            echo "Warning: appicon.png not found in build/, creating placeholder"
+            mkdir -p build
+            # Create a simple placeholder icon file
+            echo "PNG placeholder" > build/appicon.png
+          fi
+
+          # Generate packages
+          TAPE_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
+          TAPE_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager rpm --target ./build/
+          TAPE_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager apk --target ./build/
+
+          # List generated packages
+          ls -la build/*.{deb,rpm,apk} || echo "Some packages may not have been generated"
+
+      - name: Upload Linux packages (Linux only)
+        if: matrix.build.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
         with:
-          tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: "Postier v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
+          name: linux-packages-${{ needs.get-tag.outputs.tag }}
+          path: |
+            build/*.deb
+            build/*.rpm
+            build/*.apk
