@@ -38,7 +38,8 @@ export function HttpClient() {
   const [responseBody, setResponseBody] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
-  const [saveAsFileName, setSaveAsFileName] = useState('');
+  const [noCollectionAlertOpen, setNoCollectionAlertOpen] = useState(false);
+  const [filename, setFilename] = useState('');
 
   // utility to deeply check header and query
   const arraysEqual = (a: KeyValue[], b: KeyValue[]) => {
@@ -105,44 +106,46 @@ export function HttpClient() {
 
   // Open save as dialog
   const openSaveAsDialog = () => {
-    setSaveAsFileName('');
+    setFilename('');
     setSaveAsDialogOpen(true);
   };
 
-  // todo: Confirm save as
+  // Confirm save as
   const confirmSaveAs = async () => {
-    if (!saveAsFileName.trim()) {
+    if (!filename.trim()) {
       setSaveAsDialogOpen(false);
       return;
     }
 
-    try {
-      if (!selectedCollection) {
-        throw new Error('No collection selected');
+    if (!selectedCollection) {
+        setSaveAsDialogOpen(false);
+        setNoCollectionAlertOpen(true);
+        return;
       }
 
+    try {
       // Find the selected collection
       const currentCollection = collections.find((c: any) => c.id === selectedCollection);
 
       if (!currentCollection) {
-        throw new Error('Selected collection not found');
+        alert(`Selected collection (${selectedCollection}) not found`);
+        return;
       }
 
-      const fileName = saveAsFileName.trim().endsWith('.postier')
-        ? saveAsFileName.trim()
-        : saveAsFileName.trim() + '.postier';
+      const fileName = filename.trim().endsWith('.postier')
+        ? filename.trim()
+        : filename.trim() + '.postier';
 
       const filePath = `${currentCollection.path}/${fileName}`;
 
       await saveRequest(filePath);
       setSaveAsDialogOpen(false);
     } catch (error) {
-      console.error('Failed to save as:', error);
       alert('Failed to save as: ' + error);
     }
   };
 
-  // todo: Save request to file
+  // hack: Save request to file
   const saveRequest = useCallback(async (filePath?: string, responseToSave?: main.HTTPResponse | null) => {
     try {
       if (!selectedCollection && !filePath) {
@@ -674,8 +677,8 @@ export function HttpClient() {
         ]}
       >
         <TextField.Root
-          value={saveAsFileName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setSaveAsFileName(e.target.value)}
+          value={filename}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setFilename(e.target.value)}
           placeholder="Request name"
           onKeyDown={(e: any) => {
             if (e.key === 'Enter') confirmSaveAs();
@@ -684,6 +687,8 @@ export function HttpClient() {
           autoFocus
         />
       </Alert>
+
+      
     </Box>
   );
 }
