@@ -97,7 +97,7 @@ jobs:
           ls -la build/bin/
 
           # Copy the versioned binary to the expected name
-          cp build/bin/postier-linux-amd64 build/bin/postier
+          cp build/bin/postier-linux-amd64-${{ needs.get-tag.outputs.tag }} build/bin/postier
           chmod +x build/bin/postier
 
           # Copy icon if it doesn't exist in the expected location
