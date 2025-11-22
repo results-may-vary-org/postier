@@ -20,7 +20,7 @@ jobs:
       - name: Extract version from tauri.conf.json
         id: extract_version
         run: |
-          VERSION=$(grep -o '"version": "[^"]*"' ./postier-app/src-tauri/tauri.conf.json | cut -d '"' -f 4)
+          VERSION=$(grep -o '"version": "[^"]*"' ./src-tauri/tauri.conf.json | cut -d '"' -f 4)
           echo "CONF_VERSION=${VERSION}" >> $GITHUB_ENV
           echo "Config version: ${VERSION}"
 
