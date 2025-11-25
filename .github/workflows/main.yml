@@ -47,7 +47,7 @@ jobs:
 
     runs-on: ${{ matrix.build.os }}
     env:
-      TAPE_VERSION: ${{ needs.get-tag.outputs.tag }}
+      POSTIER_VERSION: ${{ needs.get-tag.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,9 +109,9 @@ jobs:
           fi
 
           # Generate packages
-          TAPE_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
-          TAPE_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager rpm --target ./build/
-          TAPE_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager apk --target ./build/
+          POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
+          POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager rpm --target ./build/
+          POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager apk --target ./build/
 
           # List generated packages
           ls -la build/*.{deb,rpm,apk} || echo "Some packages may not have been generated"
