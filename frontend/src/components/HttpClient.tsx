@@ -17,7 +17,9 @@ import {
 } from "@radix-ui/themes";
 import {BodyType, KeyValue} from "../types/common";
 import { useCollectionStore } from "../stores/store";
-import { Alert, InfoAlert } from "./Alert";
+import { InfoAlert } from "./Alert";
+
+const VALID_BODY_TYPES: BodyType[] = ['json', 'text', 'none', 'xml', 'sparql'];
 
 export function HttpClient() {
   const { collections, selectedCollection, currentFilePath, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
@@ -37,13 +39,8 @@ export function HttpClient() {
   const [loading, setLoading] = useState(false);
   const [responseBody, setResponseBody] = useState('');
   const [isSaved, setIsSaved] = useState(false);
-  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [noCollectionAlertOpen, setNoCollectionAlertOpen] = useState(false);
-  const [noCollectionAutoAlertOpen, setNoCollectionAutoAlertOpen] = useState(false);
-  const [noFileAlertOpen, setNoFileAlertOpen] = useState(false);
-  const [filename, setFilename] = useState('');
 
-  // utility to deeply check header and query
   const arraysEqual = (a: KeyValue[], b: KeyValue[]) => {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
@@ -61,19 +58,17 @@ export function HttpClient() {
       setMethod(request.method);
       setUrl(request.url);
 
-      // Convert headers object to KeyValue array
       const headersArray = Object.entries(request.headers || {}).map(([key, value]) => ({ key, value: value }));
       setHeaders(headersArray);
 
-      // Convert query object to KeyValue array
       const queryArray = Object.entries(request.query || {}).map(([key, value]) => ({ key, value: value }));
       setQueryParams(queryArray);
 
-      setBody(request.body);
+      setBody(request.body || '');
 
-      // Set body type from saved data w/ fallback
-      if ((request.bodyType as BodyType) === request.bodyType) {
-        setBodyType(request.bodyType);
+      // Validate bodyType before applying
+      if (VALID_BODY_TYPES.includes(request.bodyType as BodyType)) {
+        setBodyType(request.bodyType as BodyType);
       } else {
         setBodyType('none');
       }
@@ -106,64 +101,38 @@ export function HttpClient() {
     setIsSaved(false);
   };
 
-  // Open save as dialog
-  const openSaveAsDialog = () => {
-    if (!selectedCollection) {
-      setNoCollectionAlertOpen(true);
-      return;
-    }
-    setFilename('');
-    setSaveAsDialogOpen(true);
-  };
-
-  // Confirm save as
-  const confirmSaveAs = async () => {
-    if (!filename.trim()) {
-      setSaveAsDialogOpen(false);
-      return;
-    }
-
-    if (!selectedCollection) {
-      setSaveAsDialogOpen(false);
-      setNoCollectionAlertOpen(true);
-      return;
-    }
-
-    try {
-      // Find the selected collection
-      const currentCollection = collections.find((c: any) => c.id === selectedCollection);
-
-      if (!currentCollection) {
-        alert(`Selected collection (${selectedCollection}) not found`);
-        return;
-      }
-
-      const fileName = filename.trim().endsWith('.postier')
-        ? filename.trim()
-        : filename.trim() + '.postier';
-
-      const filePath = `${currentCollection.path}/${fileName}`;
-
-      await saveRequest(filePath);
-      setSaveAsDialogOpen(false);
-    } catch (error) {
-      alert('Failed to save as: ' + error);
-    }
+  // Build a sanitized filename from method + url
+  const buildAutoFilename = (reqMethod: string, reqUrl: string): string => {
+    const sanitizedUrl = reqUrl
+      .replace(/https?:\/\//, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '') || `request_${Date.now()}`;
+    return `${reqMethod}_${sanitizedUrl}.postier`;
   };
 
   // Save request to file
+  // If no filePath and no currentFilePath, auto-generates a path inside the selected collection
   const saveRequest = useCallback(async (filePath?: string, responseToSave?: main.HTTPResponse | null) => {
     try {
       if (!selectedCollection) {
-        setNoCollectionAutoAlertOpen(true);
+        setNoCollectionAlertOpen(true);
         return;
       }
 
-      const saveFilePath = filePath || currentFilePath;
+      let saveFilePath = filePath || currentFilePath;
+      let wasAutoCreated = false;
 
       if (!saveFilePath.trim()) {
-        setNoFileAlertOpen(true);
-        return;
+        // Auto-generate a file path in the selected collection root
+        const currentCollection = collections.find((c: any) => c.id === selectedCollection);
+        if (!currentCollection) {
+          setNoCollectionAlertOpen(true);
+          return;
+        }
+        const autoFilename = buildAutoFilename(method, url);
+        saveFilePath = `${currentCollection.path}/${autoFilename}`;
+        wasAutoCreated = true;
       }
 
       // Build headers object
@@ -174,7 +143,6 @@ export function HttpClient() {
         }
       });
 
-      // Add content type based on body type
       if (bodyType === 'json') headersObj['Content-Type'] = 'application/json';
       if (bodyType === 'text') headersObj['Content-Type'] = 'text/plain';
       if (bodyType === 'xml') headersObj['Content-Type'] = 'application/xml';
@@ -198,20 +166,25 @@ export function HttpClient() {
         bodyType,
         query: queryObj,
         response: responseToSave !== undefined ? responseToSave : response,
-        createdAt: new Date().toISOString(), // todo: not use atm
+        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
       const request = new main.PostierRequest(requestData);
-
       await SavePostierRequest(saveFilePath, request);
 
       setCurrentFilePath(saveFilePath);
       setIsSaved(true);
+
+      // If a new file was auto-created, refresh the file tree and highlight it
+      if (wasAutoCreated) {
+        window.dispatchEvent(new CustomEvent('postier-collection-refresh'));
+        window.dispatchEvent(new CustomEvent('postier-load-file', { detail: { filePath: saveFilePath } }));
+      }
     } catch (error) {
       alert('Failed to save request: ' + error);
     }
-  }, [method, url, headers, queryParams, body, bodyType, currentFilePath, response]);
+  }, [method, url, headers, queryParams, body, bodyType, currentFilePath, response, selectedCollection, collections]);
 
   const addHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
@@ -314,7 +287,6 @@ export function HttpClient() {
   }
 
   const generateResponseTime = () => {
-    // response.duration is in Microseconds
     if (!response) return <Badge color="gray">0 ms</Badge>;
     const responseTimeInMicro = response.duration ?? 0;
     const responseTimeInMilli = responseTimeInMicro / 1000;
@@ -343,7 +315,7 @@ export function HttpClient() {
 
   const calculateResponseAreaHeight = useCallback(() => {
     const requestSectionHeight = requestSectionRef?.current?.offsetHeight ?? 0;
-    const height = window.innerHeight - requestSectionHeight - (96 + 40); // 96 is the other element, padding and so on
+    const height = window.innerHeight - requestSectionHeight - (96 + 40);
     if (responseTextAreaRef.current) responseTextAreaRef.current.style.height = `${height}px`;
     if (responseCookieListRef.current) responseCookieListRef.current.style.height = `${height}px`;
     if (responseHeaderListRef.current) responseHeaderListRef.current.style.height = `${height}px`;
@@ -357,7 +329,6 @@ export function HttpClient() {
         return value[0].toLowerCase().includes("content-type");
       });
 
-      // we take the first, but anyway there can't be more than one unless the response is not well setup
       if (contentType.length > 0 && contentType[0][1].includes("application/json")) {
         return JSON.stringify(JSON.parse(response.body), null, 2);
       }
@@ -379,7 +350,7 @@ export function HttpClient() {
     }
     return null;
   }
-  
+
   // Load current file from store on component mount
   useEffect(() => {
     if (currentFilePath) {
@@ -387,8 +358,7 @@ export function HttpClient() {
     }
   }, []);
 
-  // Listen for file load events from History component
-  // todo: refacto with a store
+  // Listen for file load / clear events from FileTree
   useEffect(() => {
     const handleFileLoad = (event: any) => {
       const { filePath } = event.detail;
@@ -407,7 +377,6 @@ export function HttpClient() {
   // Watch for changes to mark as unsaved
   useEffect(() => {
     if (currentFilePath) {
-      // todo: maybe useMemo some day, but we also need to reload it if the user make any change on the file by hand
       LoadPostierRequest(currentFilePath).then((fileRequest: main.PostierRequest) => {
         const headersArray = Object.entries(fileRequest.headers || {}).map(([key, value]) => ({ key, value }));
         const queryArray = Object.entries(fileRequest.query || {}).map(([key, value]) => ({ key, value }));
@@ -423,7 +392,7 @@ export function HttpClient() {
         const queryIsEqual = arraysEqual(queryArray, stateQuery);
 
         setIsSaved(
-          fileRequest.body === body &&
+          (fileRequest.body || '') === body &&
           fileRequest.bodyType === bodyType &&
           fileRequest.method === method &&
           JSON.stringify(fileRequest.response) === JSON.stringify(response) &&
@@ -435,22 +404,18 @@ export function HttpClient() {
     }
   }, [method, url, headers, queryParams, body, bodyType, currentFilePath]);
 
-  // Handle Ctrl+S
+  // Handle Ctrl+S: always call saveRequest (auto-generates filename if needed)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
-        if (currentFilePath) {
-          saveRequest();
-        } else {
-          openSaveAsDialog();
-        }
+        saveRequest();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentFilePath, saveRequest]);
+  }, [saveRequest]);
 
   useLayoutEffect(() => {
     calculateResponseAreaHeight();
@@ -674,50 +639,11 @@ export function HttpClient() {
         </Tabs.Root>
       </Section>
 
-      <Alert
-        isOpen={saveAsDialogOpen}
-        onClose={() => setSaveAsDialogOpen(false)}
-        title="Save Request"
-        description="Enter a name for your request file:"
-        actions={[
-          {
-            label: 'Save',
-            onClick: confirmSaveAs,
-            color: 'blue'
-          }
-        ]}
-      >
-        <TextField.Root
-          value={filename}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setFilename(e.target.value)}
-          placeholder="Request name"
-          onKeyDown={(e: any) => {
-            if (e.key === 'Enter') confirmSaveAs();
-            if (e.key === 'Escape') setSaveAsDialogOpen(false);
-          }}
-          autoFocus
-        />
-      </Alert>
-
       <InfoAlert
         isOpen={noCollectionAlertOpen}
         onClose={() => setNoCollectionAlertOpen(false)}
-        title="No collection"
-        description="You should select a collection first."
-      />
-
-      <InfoAlert
-        isOpen={noCollectionAutoAlertOpen}
-        onClose={() => setNoCollectionAutoAlertOpen(false)}
-        title="No collection"
-        description="You have autosave enable but no collection selected."
-      />
-
-      <InfoAlert
-        isOpen={noFileAlertOpen}
-        onClose={() => setNoFileAlertOpen(false)}
-        title="No file selected"
-        description="You should select a file first."
+        title="No collection loaded"
+        description="Please load a folder first before saving."
       />
 
     </Box>

@@ -169,6 +169,7 @@ type FileSystemEntry struct {
 	IsDir    bool   `json:"isDir"`
 	Size     int64  `json:"size"`
 	Modified int64  `json:"modified"` // Unix timestamp
+	Method   string `json:"method"` // the method of the request, used for some UI element
 }
 
 // DirectoryTree represents a directory structure
@@ -205,6 +206,7 @@ func (a *App) GetDirectoryTree(rootPath string) (DirectoryTree, error) {
 		IsDir:    info.IsDir(),
 		Size:     info.Size(),
 		Modified: info.ModTime().Unix(),
+		Method:   "",
 	}
 
 	tree := DirectoryTree{Entry: entry}
@@ -221,6 +223,13 @@ func (a *App) GetDirectoryTree(rootPath string) (DirectoryTree, error) {
 			childTree, err := a.GetDirectoryTree(childPath)
 			if err != nil {
 				continue // Skip entries that can't be read
+			}
+			if (!entry.IsDir()) {
+				request, err := a.LoadPostierRequest(childPath)
+				if err != nil {
+					// nothing important in this context
+				}
+				childTree.Entry.Method = request.Method
 			}
 			children = append(children, childTree)
 		}
@@ -330,12 +339,18 @@ func (a *App) ListPostierFiles(directoryPath string) ([]FileSystemEntry, error) 
 				continue
 			}
 
+			request, err := a.LoadPostierRequest(filepath.Join(directoryPath, entry.Name()))
+			if err != nil {
+				// do nothing this is not important in this context
+			}
+
 			postierFiles = append(postierFiles, FileSystemEntry{
 				Name:     entry.Name(),
 				Path:     filepath.Join(directoryPath, entry.Name()),
 				IsDir:    false,
 				Size:     info.Size(),
 				Modified: info.ModTime().Unix(),
+				Method:   request.Method,
 			})
 		}
 	}
@@ -346,6 +361,11 @@ func (a *App) ListPostierFiles(directoryPath string) ([]FileSystemEntry, error) 
 	})
 
 	return postierFiles, nil
+}
+
+// RenameEntry renames or moves a file or directory atomically
+func (a *App) RenameEntry(oldPath string, newPath string) error {
+	return os.Rename(oldPath, newPath)
 }
 
 // OpenFolderDialog opens a folder selection dialog and returns the selected path

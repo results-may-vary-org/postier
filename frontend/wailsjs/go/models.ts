@@ -6,6 +6,7 @@ export namespace main {
 	    isDir: boolean;
 	    size: number;
 	    modified: number;
+	    method: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new FileSystemEntry(source);
@@ -18,6 +19,7 @@ export namespace main {
 	        this.isDir = source["isDir"];
 	        this.size = source["size"];
 	        this.modified = source["modified"];
+	        this.method = source["method"];
 	    }
 	}
 	export class DirectoryTree {

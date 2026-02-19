@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Flex, Button, TextField, ContextMenu, Text, ScrollArea } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
-import { ChevronRightIcon, FileIcon, PlusIcon, Cross2Icon, UpdateIcon } from "@radix-ui/react-icons";
-import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog } from "../../wailsjs/go/main/App";
+import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon } from "@radix-ui/react-icons";
+import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import {Collection} from "../types/common";
 import { useCollectionStore } from "../stores/store";
 import { Alert, ConfirmAlert, InfoAlert } from "./Alert";
+
 type DirectoryTree = main.DirectoryTree;
 type FileSystemEntry = main.FileSystemEntry;
 
@@ -26,20 +27,24 @@ export function FileTree() {
     setExpandedNodes
   } = useCollectionStore();
 
-  const [editingNode, setEditingNode] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; hasChildren: boolean } | null>(null);
   const [closeConfirmation, setCloseConfirmation] = useState<{ collectionId: string; collectionName: string } | null>(null);
   const [duplicateCollectionPath, setDuplicateCollectionPath] = useState<string | null>(null);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const [createDialog, setCreateDialog] = useState<{ parentPath: string; isDir: boolean } | null>(null);
   const [createName, setCreateName] = useState('');
+  const [renameDialog, setRenameDialog] = useState<{ path: string; isDir: boolean; displayName: string } | null>(null);
+  const [renameName, setRenameName] = useState('');
   const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [selectCollectionDialog, setSelectCollectionDialog] = useState(false);
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
 
   const expandedNodesSet = new Set(expandedNodes);
   const selectedCollectionId = selectedCollection;
   const currentFilePath = currentFile;
+
+  // Keep a ref to refreshCollections so event listeners always call the latest version
+  const refreshCollectionsRef = useRef<() => Promise<void>>(async () => {});
 
   // Load collections from store on component mount
   useEffect(() => {
@@ -72,16 +77,15 @@ export function FileTree() {
 
         // Auto-expand root directories of loaded collections
         if (loadedCollections.length > 0) {
-          const newExpandedNodes = [...expandedNodes];
+          const newNodes = [...expandedNodes];
           loadedCollections.forEach(collection => {
-            if (!newExpandedNodes.includes(collection.path)) {
-              newExpandedNodes.push(collection.path);
+            if (!newNodes.includes(collection.path)) {
+              newNodes.push(collection.path);
             }
           });
-          setExpandedNodes(newExpandedNodes);
+          setExpandedNodes(newNodes);
         }
 
-        // Show a notification if some collections couldn't be loaded
         if (invalidCollections.length > 0) {
           setErrorDialog({
             title: 'Some collections could not be loaded',
@@ -103,22 +107,53 @@ export function FileTree() {
     if (!isLoadingCollections && collections.length > 0) {
       if (!selectedCollectionId || !collections.find(c => c.id === selectedCollectionId)) {
         if (collections.length === 1) {
-          // Auto-select if only one collection
           setSelectedCollection(collections[0].id);
         } else {
-          // Ask user to select a collection
           setSelectCollectionDialog(true);
         }
       }
     }
   }, [collections, selectedCollectionId, isLoadingCollections]);
 
+  const refreshCollection = async (collectionId: string) => {
+    const collection = collections.find(c => c.id === collectionId);
+    if (!collection) return;
+
+    try {
+      const updatedTree = await GetDirectoryTree(collection.path);
+      setCollections(collections.map(c =>
+        c.id === collectionId ? { ...c, tree: updatedTree } : c
+      ));
+    } catch (error) {
+      console.error('Failed to refresh collection:', error);
+    }
+  };
+
+  const refreshCollections = async () => {
+    for (const collection of collections) {
+      await refreshCollection(collection.id);
+    }
+  };
+
+  // Keep ref up to date so event listener uses latest version
+  useEffect(() => {
+    refreshCollectionsRef.current = refreshCollections;
+  });
+
+  // Listen for collection refresh events dispatched by HttpClient (e.g. after auto-save creates a file)
+  useEffect(() => {
+    const handleCollectionRefresh = () => {
+      refreshCollectionsRef.current();
+    };
+    window.addEventListener('postier-collection-refresh', handleCollectionRefresh);
+    return () => window.removeEventListener('postier-collection-refresh', handleCollectionRefresh);
+  }, []);
+
   const loadCollection = async () => {
     try {
       const path = await OpenFolderDialog();
       if (!path) return;
 
-      // Check if collection is already open
       const existingCollection = collections.find(c => c.path === path);
       if (existingCollection) {
         setDuplicateCollectionPath(path);
@@ -126,8 +161,9 @@ export function FileTree() {
       }
 
       const tree = await GetDirectoryTree(path);
+      console.log(tree)
       const collection: Collection = {
-        id: `collection_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `collection_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
         name: tree.entry.name,
         path: tree.entry.path,
         tree
@@ -135,11 +171,10 @@ export function FileTree() {
 
       addCollection(collection);
 
-      // Auto-expand the root directory of the new collection
-      const newExpandedNodes = [...expandedNodes, collection.path];
-      setExpandedNodes(newExpandedNodes);
+      if (!expandedNodes.includes(collection.path)) {
+        setExpandedNodes([...expandedNodes, collection.path]);
+      }
 
-      // Auto-select this collection if none is selected
       if (!selectedCollectionId) {
         setSelectedCollection(collection.id);
       }
@@ -161,26 +196,18 @@ export function FileTree() {
 
     const collectionToClose = collections.find(c => c.id === closeConfirmation.collectionId);
 
-    // Check if current file belongs to this collection
     if (currentFilePath && collectionToClose && currentFilePath.startsWith(collectionToClose.path)) {
-      // Clear the current file and trigger clear request event
       resetCurrentFile();
       window.dispatchEvent(new CustomEvent('postier-clear-request'));
     }
 
-    // Check if this was the selected collection and clear it
     if (selectedCollectionId === closeConfirmation.collectionId) {
       resetSelectedCollection();
     }
 
     if (collectionToClose) {
       removeCollection(collectionToClose);
-
-      // Remove all nodes from this collection from expanded nodes
-      const newExpandedNodes = expandedNodes.filter(nodePath =>
-        !nodePath.startsWith(collectionToClose.path)
-      );
-      setExpandedNodes(newExpandedNodes);
+      setExpandedNodes(expandedNodes.filter(nodePath => !nodePath.startsWith(collectionToClose.path)));
     }
     setCloseConfirmation(null);
   };
@@ -190,107 +217,68 @@ export function FileTree() {
     setSelectCollectionDialog(false);
   };
 
-  const handleFileClick = async (filePath: string) => {
-    try {
-      // Find the collection this file belongs to and make it the default
-      const ownerCollection = collections.find(c => filePath.startsWith(c.path));
-      if (ownerCollection) {
-        setSelectedCollection(ownerCollection.id);
-      }
-
-      // For .postier files, load the request
-      if (filePath.endsWith('.postier')) {
-        // Mark file as current
-        setCurrentFile(filePath);
-
-        // Trigger file load event - parent component should listen for this
-        window.dispatchEvent(new CustomEvent('postier-load-file', { detail: { filePath } }));
-      }
-    } catch (error) {
-      console.error('Failed to handle file click:', error);
-      setErrorDialog({ title: 'Failed to load file', message: String(error) });
+  const handleFileClick = (filePath: string) => {
+    const ownerCollection = collections.find(c => filePath.startsWith(c.path));
+    if (ownerCollection) {
+      setSelectedCollection(ownerCollection.id);
     }
-  };
 
-  const refreshCollections = async () => {
-    for (const collection of collections) {
-      await refreshCollection(collection.id);
-    }
-  };
-
-  const refreshCollection = async (collectionId: string) => {
-    const collection = collections.find(c => c.id === collectionId);
-    if (!collection) return;
-
-    try {
-      const updatedTree = await GetDirectoryTree(collection.path);
-      const updatedCollections = collections.map(c =>
-        c.id === collectionId
-          ? { ...c, tree: updatedTree }
-          : c
-      );
-      setCollections(updatedCollections);
-    } catch (error) {
-      console.error('Failed to refresh collection:', error);
+    if (filePath.endsWith('.postier')) {
+      setCurrentFile(filePath);
+      setSelectedFolderPath(filePath.substring(0, filePath.lastIndexOf('/')));
+      window.dispatchEvent(new CustomEvent('postier-load-file', { detail: { filePath } }));
     }
   };
 
   const toggleNode = (path: string) => {
-    // Find the collection this path belongs to and make it the default
     const ownerCollection = collections.find(c => path.startsWith(c.path));
     if (ownerCollection) {
       setSelectedCollection(ownerCollection.id);
     }
 
-    // Clear request when clicking on a directory
-    window.dispatchEvent(new CustomEvent('postier-clear-request'));
+    setSelectedFolderPath(path);
 
-    const newExpandedNodes = [...expandedNodes];
-    const pathIndex = newExpandedNodes.indexOf(path);
-    if (pathIndex > -1) {
-      newExpandedNodes.splice(pathIndex, 1);
+    const idx = expandedNodes.indexOf(path);
+    if (idx > -1) {
+      const next = [...expandedNodes];
+      next.splice(idx, 1);
+      setExpandedNodes(next);
     } else {
-      newExpandedNodes.push(path);
+      setExpandedNodes([...expandedNodes, path]);
     }
-    setExpandedNodes(newExpandedNodes);
   };
 
-  const startEdit = (node: FileSystemEntry) => {
-    // Find the collection this node belongs to and make it the default
+  // Open rename modal
+  const requestRename = (node: FileSystemEntry) => {
     const ownerCollection = collections.find(c => node.path.startsWith(c.path));
     if (ownerCollection) {
       setSelectedCollection(ownerCollection.id);
     }
-
     const baseName = node.isDir ? node.name : node.name.replace(/\.[^/.]+$/, '');
-    setEditingNode(node.path);
-    setEditingValue(baseName);
+    setRenameDialog({ path: node.path, isDir: node.isDir, displayName: node.name });
+    setRenameName(baseName);
   };
 
-  const cancelEdit = () => {
-    setEditingNode(null);
-    setEditingValue('');
-  };
-
-  const saveEdit = async (oldPath: string, isDir: boolean) => {
-    if (!editingValue.trim()) {
-      cancelEdit();
+  // Confirm rename via modal
+  const confirmRename = async () => {
+    if (!renameDialog || !renameName.trim()) {
+      setRenameDialog(null);
       return;
     }
 
+    const { path: oldPath, isDir } = renameDialog;
     const oldName = oldPath.split('/').pop() || '';
     const directory = oldPath.substring(0, oldPath.lastIndexOf('/'));
     const extension = isDir ? '' : oldName.substring(oldName.lastIndexOf('.'));
-    const newName = isDir ? editingValue.trim() : editingValue.trim() + extension;
+    const newName = isDir ? renameName.trim() : renameName.trim() + extension;
     const newPath = `${directory}/${newName}`;
 
     if (oldPath === newPath) {
-      cancelEdit();
+      setRenameDialog(null);
       return;
     }
 
     // Check for name conflicts
-    // Ensure we always get a DirectoryTree node (not a Collection) before accessing children
     const parentDirNode =
       collections.find(c => c.tree.entry.path === directory)?.tree ??
       collections.flatMap(c => getAllNodes(c.tree)).find(n => n.entry.path === directory);
@@ -301,18 +289,29 @@ export function FileTree() {
     }
 
     try {
-      if (isDir) {
-        await CreateDirectory(newPath);
-        await DeleteDirectory(oldPath);
-      } else {
-        const content = ''; // You'd read the actual content here
-        await CreateFile(newPath, content);
-        await DeleteFile(oldPath);
+      await RenameEntry(oldPath, newPath);
+
+      // Update currentFilePath if the open file was renamed or is inside a renamed directory
+      if (currentFilePath === oldPath) {
+        setCurrentFile(newPath);
+      } else if (currentFilePath.startsWith(oldPath + '/')) {
+        setCurrentFile(newPath + currentFilePath.substring(oldPath.length));
       }
 
-      // Refresh all collections that might be affected
-      collections.forEach(c => refreshCollection(c.id));
-      cancelEdit();
+      // Update expanded nodes if a directory was renamed
+      if (isDir) {
+        setExpandedNodes(expandedNodes.map(nodePath => {
+          if (nodePath === oldPath) return newPath;
+          if (nodePath.startsWith(oldPath + '/')) return newPath + nodePath.substring(oldPath.length);
+          return nodePath;
+        }));
+      }
+
+      for (const c of collections) {
+        await refreshCollection(c.id);
+      }
+
+      setRenameDialog(null);
     } catch (error) {
       console.error('Failed to rename:', error);
       setErrorDialog({ title: 'Failed to rename', message: String(error) });
@@ -320,7 +319,6 @@ export function FileTree() {
   };
 
   const requestCreateNew = (parentPath: string, isDir: boolean) => {
-    // Find the collection this path belongs to and make it the default
     const ownerCollection = collections.find(c => parentPath.startsWith(c.path));
     if (ownerCollection) {
       setSelectedCollection(ownerCollection.id);
@@ -362,6 +360,7 @@ export function FileTree() {
           url: '',
           headers: {},
           body: '',
+          bodyType: 'none',
           query: {},
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -369,14 +368,20 @@ export function FileTree() {
         await CreateFile(newPath, JSON.stringify(defaultRequest, null, 2));
       }
 
-      // Refresh collections and expand parent
-      collections.forEach(c => refreshCollection(c.id));
-      const newExpandedNodes = [...expandedNodes];
-      if (!newExpandedNodes.includes(parentPath)) {
-        newExpandedNodes.push(parentPath);
+      // Expand parent directory
+      if (!expandedNodes.includes(parentPath)) {
+        setExpandedNodes([...expandedNodes, parentPath]);
       }
-      setExpandedNodes(newExpandedNodes);
+
       setCreateDialog(null);
+
+      // Refresh all collections and wait so the new item appears
+      await Promise.all(collections.map(c => refreshCollection(c.id)));
+
+      // Auto-focus newly created file (item 5)
+      if (!isDir) {
+        handleFileClick(newPath);
+      }
     } catch (error) {
       console.error('Failed to create:', error);
       setErrorDialog({ title: 'Failed to Create', message: String(error) });
@@ -385,7 +390,6 @@ export function FileTree() {
   };
 
   const deleteNode = async (path: string) => {
-    // Find the collection this path belongs to and make it the default
     const ownerCollection = collections.find(c => path.startsWith(c.path));
     if (ownerCollection) {
       setSelectedCollection(ownerCollection.id);
@@ -438,9 +442,46 @@ export function FileTree() {
     return nodes;
   };
 
+  const generateIcon = (entry: FileSystemEntry, isActiveFile: boolean) => {
+    let color = undefined;
+    if (entry.method) {
+      switch (entry.method) {
+        case "GET":
+          color = "var(--green-11)";
+          break;
+        case "POST":
+          color = "var(--yellow-11)";
+          break;
+        case "PUT":
+          color = "var(--orange-11)";
+          break;
+        case "DELETE":
+          color = "var(--red-11)";
+          break;
+        case "PATCH":
+          color = "var(--blue-11)";
+          break;
+        case "HEAD":
+          color = "var(--gray-11)";
+          break;
+        case "OPTION":
+          color = "var(--brown-11)";
+          break;
+        default:
+          break;
+      }
+    }
+    return <EnvelopeClosedIcon color={isActiveFile ? 'var(--orange-11)' : color} />;
+  }
+
   const renderNode = (node: DirectoryTree, depth: number = 0) => {
     const isExpanded = expandedNodesSet.has(node.entry.path);
-    const isEditing = editingNode === node.entry.path;
+    const isActiveFile = !node.entry.isDir && currentFilePath === node.entry.path;
+    const isSelectedFolder = node.entry.isDir && selectedFolderPath === node.entry.path;
+
+    let bgColor: string | undefined;
+    if (isActiveFile) bgColor = 'var(--orange-4)';
+    else if (isSelectedFolder) bgColor = 'var(--orange-2)';
 
     return (
       <Box key={node.entry.path}>
@@ -453,9 +494,10 @@ export function FileTree() {
               style={{
                 paddingLeft: `${depth * 20 + 8}px`,
                 cursor: 'pointer',
-                borderRadius: '4px'
+                borderRadius: '4px',
+                backgroundColor: bgColor,
               }}
-              className="hover:bg-gray-100"
+              className={bgColor ? undefined : "hover:bg-gray-100"}
               onClick={() => {
                 if (node.entry.isDir) {
                   toggleNode(node.entry.path);
@@ -465,26 +507,29 @@ export function FileTree() {
               }}
             >
               {node.entry.isDir ? (
-                <ChevronRightIcon style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }} />
-              ) : (
-                <FileIcon />
-              )}
-
-              {isEditing ? (
-                <TextField.Root
-                  value={editingValue}
-                  onChange={(e: any) => setEditingValue(e.target.value)}
-                  onBlur={() => saveEdit(node.entry.path, node.entry.isDir)}
-                  onKeyDown={(e: any) => {
-                    if (e.key === 'Enter') saveEdit(node.entry.path, node.entry.isDir);
-                    if (e.key === 'Escape') cancelEdit();
+                <ChevronRightIcon
+                  style={{
+                    transform: isExpanded ? 'rotate(90deg)' : 'none',
+                    color: isSelectedFolder ? 'var(--orange-9)' : undefined,
                   }}
-                  size="1"
-                  autoFocus
                 />
               ) : (
-                <Text size="2">{node.entry.name.replace(".postier", "")}</Text>
+                generateIcon(node.entry, isActiveFile)
               )}
+
+              <Text
+                size="2"
+                weight={isActiveFile || isSelectedFolder ? 'medium' : 'regular'}
+                style={{
+                  color: isActiveFile
+                    ? 'var(--orange-11)'
+                    : isSelectedFolder
+                    ? 'var(--orange-9)'
+                    : undefined,
+                }}
+              >
+                {node.entry.name.replace(".postier", "")}
+              </Text>
             </Flex>
           </ContextMenu.Trigger>
 
@@ -500,7 +545,7 @@ export function FileTree() {
                 <ContextMenu.Separator />
               </>
             )}
-            <ContextMenu.Item onClick={() => startEdit(node.entry)}>
+            <ContextMenu.Item onClick={() => requestRename(node.entry)}>
               Rename
             </ContextMenu.Item>
             <ContextMenu.Item onClick={() => deleteNode(node.entry.path)} color="red">
@@ -509,9 +554,9 @@ export function FileTree() {
           </ContextMenu.Content>
         </ContextMenu.Root>
 
-        {node.entry.isDir && isExpanded && node.children && (
+        {node.entry.isDir && isExpanded && (
           <Box>
-            {node.children.map(child => renderNode(child, depth + 1))}
+            {(node.children ?? []).map(child => renderNode(child, depth + 1))}
           </Box>
         )}
       </Box>
@@ -544,8 +589,7 @@ export function FileTree() {
                   }}
                   onClick={() => {
                     setSelectedCollection(collection.id);
-                    // Clear request when clicking on collection
-                    window.dispatchEvent(new CustomEvent('postier-clear-request'));
+                    setSelectedFolderPath(collection.path);
                   }}
                 >
                   <Text
@@ -631,6 +675,7 @@ export function FileTree() {
         description={errorDialog?.message || ""}
       />
 
+      {/* Create new file/folder dialog */}
       <Alert
         isOpen={!!createDialog}
         onClose={() => setCreateDialog(null)}
@@ -652,9 +697,37 @@ export function FileTree() {
             if (e.key === 'Enter') confirmCreateNew();
             if (e.key === 'Escape') setCreateDialog(null);
           }}
+          autoFocus
         />
       </Alert>
 
+      {/* Rename dialog */}
+      <Alert
+        isOpen={!!renameDialog}
+        onClose={() => setRenameDialog(null)}
+        title={`Rename ${renameDialog?.isDir ? 'Folder' : 'Request'}`}
+        description={`Enter a new name for "${renameDialog?.displayName.replace('.postier', '')}":`}
+        actions={[
+          {
+            label: 'Rename',
+            onClick: confirmRename,
+            color: 'blue'
+          }
+        ]}
+      >
+        <TextField.Root
+          value={renameName}
+          onChange={(e: any) => setRenameName(e.target.value)}
+          placeholder={`${renameDialog?.isDir ? 'Folder' : 'Request'} name`}
+          onKeyDown={(e: any) => {
+            if (e.key === 'Enter') confirmRename();
+            if (e.key === 'Escape') setRenameDialog(null);
+          }}
+          autoFocus
+        />
+      </Alert>
+
+      {/* Select default collection dialog */}
       <Alert
         isOpen={selectCollectionDialog}
         onClose={() => setSelectCollectionDialog(false)}
@@ -668,6 +741,7 @@ export function FileTree() {
               align="center"
               gap="2"
               p="2"
+              mb="2"
               style={{
                 cursor: 'pointer',
                 borderRadius: '4px',
@@ -675,7 +749,6 @@ export function FileTree() {
               }}
               className="hover:bg-gray-100"
               onClick={() => selectCollection(collection.id)}
-              mb="2"
             >
               <Text size="2">{collection.name}</Text>
               <Text size="1" color="gray">{collection.path}</Text>

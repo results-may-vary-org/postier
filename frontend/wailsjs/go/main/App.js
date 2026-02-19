@@ -42,6 +42,10 @@ export function ReadFile(arg1) {
   return window['go']['main']['App']['ReadFile'](arg1);
 }
 
+export function RenameEntry(arg1, arg2) {
+  return window['go']['main']['App']['RenameEntry'](arg1, arg2);
+}
+
 export function SavePostierRequest(arg1, arg2) {
   return window['go']['main']['App']['SavePostierRequest'](arg1, arg2);
 }

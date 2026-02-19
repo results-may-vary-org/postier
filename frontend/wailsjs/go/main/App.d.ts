@@ -22,6 +22,8 @@ export function OpenFolderDialog():Promise<string>;
 
 export function ReadFile(arg1:string):Promise<string>;
 
+export function RenameEntry(arg1:string,arg2:string):Promise<void>;
+
 export function SavePostierRequest(arg1:string,arg2:main.PostierRequest):Promise<void>;
 
 export function UpdateFile(arg1:string,arg2:string):Promise<void>;
