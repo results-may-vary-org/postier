@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import { AlertDialog, Button, Flex } from "@radix-ui/themes";
 
+/** Colour options available for alert action buttons */
+
 interface AlertProps {
   isOpen: boolean;
   onClose: () => void;
@@ -115,7 +117,7 @@ export function Alert({
             <AlertDialog.Action key={index}>
               <Button
                 variant="solid"
-                color={action.color || 'blue'}
+                color={action.color}
                 onClick={action.onClick}
               >
                 {action.label}

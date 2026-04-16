@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Box, Flex, Button, TextField, ContextMenu, Text, ScrollArea } from "@radix-ui/themes";
+import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
-import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
-import {Collection} from "../types/common";
+import { Collection } from "../types/common";
 import { useCollectionStore } from "../stores/store";
 import { Alert, ConfirmAlert, InfoAlert } from "./Alert";
 import { AutoSaveModal } from "./AutoSaveModal";
@@ -12,7 +12,18 @@ import { AutoSaveModal } from "./AutoSaveModal";
 type DirectoryTree = main.DirectoryTree;
 type FileSystemEntry = main.FileSystemEntry;
 
-export function FileTree() {
+/** Props accepted by the FileTree component */
+interface FileTreeProps {
+  /** Callback to toggle sidebar visibility (bound to Ctrl+N) */
+  onToggleSidebar: () => void;
+}
+
+/**
+ * Sidebar file-tree component that displays loaded collections and their
+ * directory structure, providing file-management actions via context menus
+ * and inline toolbar buttons.
+ */
+export function FileTree({ onToggleSidebar }: FileTreeProps) {
   const {
     collections,
     expandedNodes,
@@ -48,7 +59,7 @@ export function FileTree() {
   const selectedCollectionId = selectedCollection;
   const currentFilePath = currentFile;
 
-  // Keep a ref to refreshCollections so event listeners always call the latest version
+  /** Keep a ref to refreshCollections so event listeners always call the latest version */
   const refreshCollectionsRef = useRef<() => Promise<void>>(async () => {});
 
   // Load collections from store on component mount
@@ -120,6 +131,7 @@ export function FileTree() {
     }
   }, [collections, selectedCollectionId, isLoadingCollections]);
 
+  /** Refresh a single collection by re-fetching its directory tree from disk */
   const refreshCollection = async (collectionId: string) => {
     const collection = collections.find(c => c.id === collectionId);
     if (!collection) return;
@@ -134,10 +146,20 @@ export function FileTree() {
     }
   };
 
+  /** Refresh all loaded collections in parallel, applying changes in a single update */
   const refreshCollections = async () => {
-    for (const collection of collections) {
-      await refreshCollection(collection.id);
-    }
+    const updated = await Promise.all(
+      collections.map(async c => {
+        try {
+          const tree = await GetDirectoryTree(c.path);
+          return { ...c, tree };
+        } catch (error) {
+          console.error(`Failed to refresh collection "${c.name}":`, error);
+          return c;
+        }
+      })
+    );
+    setCollections(updated);
   };
 
   // Keep ref up to date so event listener uses latest version
@@ -154,6 +176,7 @@ export function FileTree() {
     return () => window.removeEventListener('postier-collection-refresh', handleCollectionRefresh);
   }, []);
 
+  /** Open a folder-picker dialog and add the selected folder as a new collection */
   const loadCollection = async () => {
     try {
       const path = await OpenFolderDialog();
@@ -166,7 +189,7 @@ export function FileTree() {
       }
 
       const tree = await GetDirectoryTree(path);
-      console.log(tree)
+      console.log(tree);
       const collection: Collection = {
         id: `collection_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
         name: tree.entry.name,
@@ -193,6 +216,7 @@ export function FileTree() {
     }
   };
 
+  /** Ask the user to confirm closing a collection */
   const requestCloseCollection = (collectionId: string) => {
     const collection = collections.find(c => c.id === collectionId);
     if (collection) {
@@ -200,6 +224,7 @@ export function FileTree() {
     }
   };
 
+  /** Perform the actual close after the user confirms */
   const confirmCloseCollection = () => {
     if (!closeConfirmation) return;
 
@@ -221,11 +246,13 @@ export function FileTree() {
     setCloseConfirmation(null);
   };
 
+  /** Set the active collection from the selection dialog */
   const selectCollection = (collectionId: string) => {
     setSelectedCollection(collectionId);
     setSelectCollectionDialog(false);
   };
 
+  /** Handle a click on a file node — loads it in the editor */
   const handleFileClick = (filePath: string) => {
     const ownerCollection = collections.find(c => filePath.startsWith(c.path));
     if (ownerCollection) {
@@ -239,6 +266,7 @@ export function FileTree() {
     }
   };
 
+  /** Expand or collapse a directory node */
   const toggleNode = (path: string) => {
     const ownerCollection = collections.find(c => path.startsWith(c.path));
     if (ownerCollection) {
@@ -257,7 +285,7 @@ export function FileTree() {
     }
   };
 
-  // Open rename modal
+  /** Open the rename dialog for a file-system entry */
   const requestRename = (node: FileSystemEntry) => {
     const ownerCollection = collections.find(c => node.path.startsWith(c.path));
     if (ownerCollection) {
@@ -268,7 +296,7 @@ export function FileTree() {
     setRenameName(baseName);
   };
 
-  // Confirm rename via modal
+  /** Confirm and execute the rename operation */
   const confirmRename = async () => {
     if (!renameDialog || !renameName.trim()) {
       setRenameDialog(null);
@@ -316,9 +344,7 @@ export function FileTree() {
         }));
       }
 
-      for (const c of collections) {
-        await refreshCollection(c.id);
-      }
+      await refreshCollections();
 
       setRenameDialog(null);
     } catch (error) {
@@ -327,6 +353,7 @@ export function FileTree() {
     }
   };
 
+  /** Open the create dialog for a new file or directory under the given parent path */
   const requestCreateNew = (parentPath: string, isDir: boolean) => {
     const ownerCollection = collections.find(c => parentPath.startsWith(c.path));
     if (ownerCollection) {
@@ -337,6 +364,7 @@ export function FileTree() {
     setCreateName('');
   };
 
+  /** Confirm and execute the file/folder creation */
   const confirmCreateNew = async () => {
     if (!createDialog || !createName.trim()) {
       setCreateDialog(null);
@@ -385,9 +413,9 @@ export function FileTree() {
       setCreateDialog(null);
 
       // Refresh all collections and wait so the new item appears
-      await Promise.all(collections.map(c => refreshCollection(c.id)));
+      await refreshCollections();
 
-      // Auto-focus newly created file (item 5)
+      // Auto-focus newly created file
       if (!isDir) {
         handleFileClick(newPath);
       }
@@ -398,6 +426,7 @@ export function FileTree() {
     }
   };
 
+  /** Delete a file or folder node, prompting for confirmation when it has children */
   const deleteNode = async (path: string) => {
     const ownerCollection = collections.find(c => path.startsWith(c.path));
     if (ownerCollection) {
@@ -422,19 +451,20 @@ export function FileTree() {
       } else {
         await DeleteFile(path);
       }
-      collections.forEach(c => refreshCollection(c.id));
+      await refreshCollections();
     } catch (error) {
       console.error('Failed to delete:', error);
       setErrorDialog({ title: 'Failed to Delete', message: String(error) });
     }
   };
 
+  /** Confirm and execute recursive deletion of a directory */
   const confirmDelete = async () => {
     if (!deleteConfirmation) return;
 
     try {
       await DeleteDirectory(deleteConfirmation.path);
-      collections.forEach(c => refreshCollection(c.id));
+      await refreshCollections();
       setDeleteConfirmation(null);
     } catch (error) {
       console.error('Failed to delete:', error);
@@ -443,6 +473,7 @@ export function FileTree() {
     }
   };
 
+  /** Recursively collect all DirectoryTree nodes from a subtree */
   const getAllNodes = (tree: DirectoryTree): DirectoryTree[] => {
     const nodes = [tree];
     tree.children?.forEach(child => {
@@ -451,46 +482,56 @@ export function FileTree() {
     return nodes;
   };
 
-  const generateIcon = (entry: FileSystemEntry, isActiveFile: boolean) => {
-    let color = undefined;
-    if (entry.method) {
-      switch (entry.method) {
-        case "GET":
-          color = "var(--green-11)";
-          break;
-        case "POST":
-          color = "var(--yellow-11)";
-          break;
-        case "PUT":
-          color = "var(--orange-11)";
-          break;
-        case "DELETE":
-          color = "var(--red-11)";
-          break;
-        case "PATCH":
-          color = "var(--blue-11)";
-          break;
-        case "HEAD":
-          color = "var(--gray-11)";
-          break;
-        case "OPTION":
-          color = "var(--brown-11)";
-          break;
-        default:
-          break;
-      }
-    }
-    return <EnvelopeClosedIcon color={isActiveFile ? 'var(--orange-11)' : color} />;
-  }
+  /** Renders the HTTP method as a small coloured monospace label.
+   *  Falls back to EnvelopeClosedIcon for empty/unknown methods. */
+  const MethodBadge = ({ method, isActiveFile }: { method: string | undefined; isActiveFile: boolean }) => {
+    const methodColors: Record<string, string> = {
+      GET:     'var(--green-11)',
+      POST:    'var(--yellow-11)',
+      PUT:     'var(--orange-11)',
+      DELETE:  'var(--red-11)',
+      PATCH:   'var(--blue-11)',
+      HEAD:    'var(--gray-11)',
+      OPTIONS: 'var(--purple-11)',
+    };
 
+    const resolvedColor = isActiveFile
+      ? 'var(--accent-11)'
+      : (method ? (methodColors[method] ?? undefined) : undefined);
+
+    if (!method || resolvedColor === undefined) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', minWidth: '45px' }}>
+          <EnvelopeClosedIcon color="var(--gray-11)" />
+        </span>
+      );
+    }
+
+    return (
+      <Text
+        size="1"
+        weight="bold"
+        style={{
+          fontFamily: '"Noto Sans Mono", monospace',
+          color: resolvedColor,
+          minWidth: '45px',
+          display: 'inline-block',
+        }}
+      >
+        {method}
+      </Text>
+    );
+  };
+
+  /** Recursively render a single directory-tree node and its children */
   const renderNode = (node: DirectoryTree, depth: number = 0) => {
     const isExpanded = expandedNodesSet.has(node.entry.path);
     const isActiveFile = !node.entry.isDir && currentFilePath === node.entry.path;
     const isSelectedFolder = node.entry.isDir && selectedFolderPath === node.entry.path;
 
     let bgColor: string | undefined;
-    if (isActiveFile) bgColor = 'var(--orange-4)';
-    else if (isSelectedFolder) bgColor = 'var(--orange-2)';
+    if (isActiveFile) bgColor = 'var(--accent-4)';
+    else if (isSelectedFolder) bgColor = 'var(--accent-2)';
 
     return (
       <Box key={node.entry.path}>
@@ -519,11 +560,11 @@ export function FileTree() {
                 <ChevronRightIcon
                   style={{
                     transform: isExpanded ? 'rotate(90deg)' : 'none',
-                    color: isSelectedFolder ? 'var(--orange-9)' : undefined,
+                    color: isSelectedFolder ? 'var(--accent-9)' : undefined,
                   }}
                 />
               ) : (
-                generateIcon(node.entry, isActiveFile)
+                <MethodBadge method={node.entry.method} isActiveFile={isActiveFile} />
               )}
 
               <Text
@@ -531,9 +572,9 @@ export function FileTree() {
                 weight={isActiveFile || isSelectedFolder ? 'medium' : 'regular'}
                 style={{
                   color: isActiveFile
-                    ? 'var(--orange-11)'
+                    ? 'var(--accent-11)'
                     : isSelectedFolder
-                    ? 'var(--orange-9)'
+                    ? 'var(--accent-9)'
                     : undefined,
                 }}
               >
@@ -576,7 +617,11 @@ export function FileTree() {
     <Flex direction="row" height="100%">
       <Box height="100%" width="100%">
         <Flex direction="column" height="100%">
+          {/* Toolbar: sidebar toggle, load collection, refresh */}
           <Flex justify="start" align="center" p="2" gap="2">
+            <IconButton size="1" variant="ghost" onClick={onToggleSidebar} title="Toggle sidebar (Ctrl+N)">
+              <HamburgerMenuIcon />
+            </IconButton>
             <Button size="1" onClick={loadCollection}>
               <PlusIcon /> Load
             </Button>
@@ -587,43 +632,81 @@ export function FileTree() {
 
           <ScrollArea style={{ flex: 1 }}>
             {collections.map(collection => (
-              <Box key={collection.id} mb="4">
+              <Box key={collection.id} mb="2">
+                {/* ── Merged collection header ── */}
                 <Flex
                   justify="between"
                   align="center"
                   p="2"
                   style={{
-                    backgroundColor: selectedCollectionId === collection.id ? 'var(--orange-2)' : 'var(--gray-2)',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => {
-                    setSelectedCollection(collection.id);
-                    setSelectedFolderPath(collection.path);
+                    backgroundColor: selectedCollectionId === collection.id ? 'var(--accent-2)' : 'var(--gray-2)',
+                    border: '1px solid var(--accent-6)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
                   }}
                 >
-                  <Text
-                    weight="medium"
-                    style={{
-                      color: selectedCollectionId === collection.id ? 'var(--orange-11)' : 'inherit'
-                    }}
+                  {/* Left: chevron + name — toggles expand and selects collection */}
+                  <Flex
+                    align="center"
+                    gap="1"
+                    style={{ flex: 1, minWidth: 0 }}
+                    onClick={() => toggleNode(collection.path)}
                   >
-                    {collection.name}
-                  </Text>
-                  <Button
-                    size="1"
-                    variant="ghost"
-                    onClick={(e: any) => {
-                      e.stopPropagation();
-                      requestCloseCollection(collection.id);
-                    }}
+                    <ChevronRightIcon
+                      style={{
+                        transform: expandedNodesSet.has(collection.path) ? 'rotate(90deg)' : 'none',
+                        flexShrink: 0,
+                        color: selectedCollectionId === collection.id ? 'var(--accent-9)' : undefined,
+                      }}
+                    />
+                    <Text
+                      weight="medium"
+                      style={{
+                        color: selectedCollectionId === collection.id ? 'var(--accent-11)' : 'inherit',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {collection.name}
+                    </Text>
+                  </Flex>
+
+                  {/* Right: action buttons — stop propagation so they don't toggle expand */}
+                  <Flex
+                    gap="1"
+                    align="center"
+                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
-                    <Cross2Icon />
-                  </Button>
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger>
+                        <IconButton size="1" variant="ghost" title="New folder or request">
+                          <PlusIcon />
+                        </IconButton>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Content>
+                        <DropdownMenu.Item onClick={() => requestCreateNew(collection.path, true)}>
+                          <PlusIcon /> New Folder
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item onClick={() => requestCreateNew(collection.path, false)}>
+                          <PlusIcon /> New Request
+                        </DropdownMenu.Item>
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Root>
+
+                    <IconButton size="1" variant="ghost" onClick={() => requestCloseCollection(collection.id)}>
+                      <Cross2Icon />
+                    </IconButton>
+                  </Flex>
                 </Flex>
 
-                <Box>
-                  {renderNode(collection.tree)}
-                </Box>
+                {/* Children — only shown when collection root is expanded */}
+                {expandedNodesSet.has(collection.path) && (
+                  <Box>
+                    {(collection.tree.children ?? []).map(child => renderNode(child, 0))}
+                  </Box>
+                )}
               </Box>
             ))}
 
@@ -694,7 +777,7 @@ export function FileTree() {
           {
             label: 'Create',
             onClick: confirmCreateNew,
-            color: 'blue'
+            color: undefined
           }
         ]}
       >
@@ -720,7 +803,7 @@ export function FileTree() {
           {
             label: 'Rename',
             onClick: confirmRename,
-            color: 'blue'
+            color: undefined
           }
         ]}
       >

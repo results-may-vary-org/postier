@@ -2,12 +2,14 @@ import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect} 
 import { MakeRequest, LoadPostierRequest, SavePostierRequest } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon } from "@radix-ui/react-icons";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
   Badge,
   Box,
   Button,
   DataList,
   Flex,
+  IconButton,
   Section,
   Select,
   Tabs,
@@ -22,7 +24,15 @@ import { ResponseBodyViewer } from "./ResponseBodyViewer";
 
 const VALID_BODY_TYPES: BodyType[] = ['json', 'text', 'none', 'xml', 'sparql'];
 
-export function HttpClient() {
+/** Props accepted by the HttpClient component */
+interface HttpClientProps {
+  /** Whether the collection sidebar is currently visible */
+  sidebarVisible: boolean;
+  /** Callback to toggle the collection sidebar (also bound to Ctrl+N) */
+  onToggleSidebar: () => void;
+}
+
+export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps) {
   const { collections, selectedCollection, currentFilePath, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
 
   const requestSectionRef = useRef<HTMLDivElement>(null);
@@ -252,6 +262,8 @@ export function HttpClient() {
 
       if (autoSave) {
         await saveRequest(undefined, result);
+        // Refresh the tree after a confirmed auto-save write so saved response data appears.
+        window.dispatchEvent(new CustomEvent('postier-collection-refresh'));
       } else {
         setIsSaved(false);
       }
@@ -433,6 +445,12 @@ export function HttpClient() {
       <Section id="request" pt="2" pb="2" ref={requestSectionRef}>
         <Flex justify="between" align="center" mb="2">
           <Flex align="center" gap="2">
+            {/* Sidebar toggle — mirrors the Ctrl+N shortcut */}
+            <IconButton variant="ghost" size="1" onClick={onToggleSidebar} title="Toggle sidebar (Ctrl+N)">
+              {sidebarVisible
+                ? <PanelLeftClose size={16} />
+                : <PanelLeftOpen  size={16} />}
+            </IconButton>
             <Text size="1" color="gray">
               {currentFilePath ? currentFilePath.split('/').pop()?.replace(".postier", "") : "Request isn't attached to a file"}
             </Text>
@@ -524,9 +542,9 @@ export function HttpClient() {
                       onChange={(e: ChangeEvent<HTMLInputElement>) => updateHeader(index, 'value', e.target.value)}
                     />
                   </Box>
-                  <Button onClick={() => removeHeader(index)}>
+                  <IconButton onClick={() => removeHeader(index)}>
                     <TrashIcon />
-                  </Button>
+                  </IconButton>
                 </Flex>
               ))}
             </Box>
@@ -557,9 +575,9 @@ export function HttpClient() {
                       onChange={(e: ChangeEvent<HTMLInputElement>) => updateQueryParam(index, 'value', e.target.value)}
                     />
                   </Box>
-                  <Button onClick={() => removeQueryParam(index)}>
+                  <IconButton onClick={() => removeQueryParam(index)}>
                     <TrashIcon />
-                  </Button>
+                  </IconButton>
                 </Flex>
               ))}
             </Box>
