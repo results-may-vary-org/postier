@@ -34,11 +34,12 @@ func (a *App) startup(ctx context.Context) {
 
 // HTTPRequest represents an HTTP request to be made
 type HTTPRequest struct {
-	Method  string            `json:"method"`
-	URL     string            `json:"url"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body"`
-	Query   map[string]string `json:"query"`
+	Method      string            `json:"method"`
+	URL         string            `json:"url"`
+	Headers     map[string]string `json:"headers"`
+	Body        string            `json:"body"`
+	Query       map[string]string `json:"query"`
+	EnvFilePath string            `json:"envFilePath,omitempty"` // path to the collection root; .postier.env is resolved from it
 }
 
 // HTTPResponse represents the response from an HTTP request
@@ -63,9 +64,63 @@ type HTTPCookie struct {
 	HTTPOnly bool      `json:"httpOnly"`
 }
 
+// interpolate replaces every {{KEY}} placeholder in s with the matching value from vars.
+// Unknown placeholders are left unchanged.
+func interpolate(s string, vars map[string]string) string {
+	for key, value := range vars {
+		s = strings.ReplaceAll(s, "{{"+key+"}}", value)
+	}
+	return s
+}
+
+// ReadEnvFile reads the .postier.env file from collectionPath and returns the key-value pairs.
+// Returns an empty map (not an error) when the file does not exist.
+func (a *App) ReadEnvFile(collectionPath string) (map[string]string, error) {
+	envPath := filepath.Join(collectionPath, ".postier.env")
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]string{}, nil
+		}
+		return nil, fmt.Errorf("failed to read env file: %v", err)
+	}
+
+	var vars map[string]string
+	if err := json.Unmarshal(content, &vars); err != nil {
+		return nil, fmt.Errorf("failed to parse env file: %v", err)
+	}
+	return vars, nil
+}
+
+// WriteEnvFile writes vars to the .postier.env file inside collectionPath.
+// The file is created with 0600 permissions so only the owner can read it.
+func (a *App) WriteEnvFile(collectionPath string, vars map[string]string) error {
+	envPath := filepath.Join(collectionPath, ".postier.env")
+	content, err := json.MarshalIndent(vars, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal env vars: %v", err)
+	}
+	return os.WriteFile(envPath, content, 0600)
+}
+
 // MakeRequest performs an HTTP request and returns the response
 func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 	startTime := time.Now()
+
+	// Apply environment variable substitution when a collection path is provided
+	if req.EnvFilePath != "" {
+		vars, err := a.ReadEnvFile(req.EnvFilePath)
+		if err == nil && len(vars) > 0 {
+			req.URL = interpolate(req.URL, vars)
+			req.Body = interpolate(req.Body, vars)
+			for k, v := range req.Headers {
+				req.Headers[k] = interpolate(v, vars)
+			}
+			for k, v := range req.Query {
+				req.Query[k] = interpolate(v, vars)
+			}
+		}
+	}
 
 	// Parse and validate URL
 	parsedURL, err := url.Parse(req.URL)
@@ -219,6 +274,11 @@ func (a *App) GetDirectoryTree(rootPath string) (DirectoryTree, error) {
 
 		var children []DirectoryTree
 		for _, entry := range entries {
+			// Hide internal config files from the collection tree
+			if entry.Name() == ".postier.env" {
+				continue
+			}
+
 			childPath := filepath.Join(rootPath, entry.Name())
 			childTree, err := a.GetDirectoryTree(childPath)
 			if err != nil {

@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
-import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon, MixerVerticalIcon } from "@radix-ui/react-icons";
 import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { Collection } from "../types/common";
 import { useCollectionStore } from "../stores/store";
 import { Alert, ConfirmAlert, InfoAlert } from "./Alert";
 import { AutoSaveModal } from "./AutoSaveModal";
+import { EnvEditor } from "./EnvEditor";
 
 type DirectoryTree = main.DirectoryTree;
 type FileSystemEntry = main.FileSystemEntry;
@@ -54,6 +55,7 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
   const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [selectCollectionDialog, setSelectCollectionDialog] = useState(false);
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
+  const [envEditorCollection, setEnvEditorCollection] = useState<{ id: string; name: string; path: string } | null>(null);
 
   const expandedNodesSet = new Set(expandedNodes);
   const selectedCollectionId = selectedCollection;
@@ -695,6 +697,10 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
                       </DropdownMenu.Content>
                     </DropdownMenu.Root>
 
+                    <IconButton size="1" variant="ghost" title="Edit environment variables" onClick={() => setEnvEditorCollection({ id: collection.id, name: collection.name, path: collection.path })}>
+                      <MixerVerticalIcon />
+                    </IconButton>
+
                     <IconButton size="1" variant="ghost" onClick={() => requestCloseCollection(collection.id)}>
                       <Cross2Icon />
                     </IconButton>
@@ -857,6 +863,15 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
           setShowAutoSaveModal(false);
         }}
       />
+
+      {envEditorCollection && (
+        <EnvEditor
+          isOpen={!!envEditorCollection}
+          onClose={() => setEnvEditorCollection(null)}
+          collectionName={envEditorCollection.name}
+          collectionPath={envEditorCollection.path}
+        />
+      )}
     </Flex>
   );
 }
