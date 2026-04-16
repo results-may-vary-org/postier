@@ -11,13 +11,14 @@ import {
   Section,
   Select,
   Tabs,
-  TextArea,
   TextField,
   Text
 } from "@radix-ui/themes";
 import {BodyType, KeyValue} from "../types/common";
 import { useCollectionStore } from "../stores/store";
 import { InfoAlert } from "./Alert";
+import { RequestBodyEditor } from "./RequestBodyEditor";
+import { ResponseBodyViewer } from "./ResponseBodyViewer";
 
 const VALID_BODY_TYPES: BodyType[] = ['json', 'text', 'none', 'xml', 'sparql'];
 
@@ -25,7 +26,7 @@ export function HttpClient() {
   const { collections, selectedCollection, currentFilePath, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
 
   const requestSectionRef = useRef<HTMLDivElement>(null);
-  const responseTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const responseTextAreaRef = useRef<HTMLDivElement>(null);
   const responseHeaderListRef = useRef<HTMLDivElement>(null);
   const responseCookieListRef = useRef<HTMLDivElement>(null);
 
@@ -291,7 +292,7 @@ export function HttpClient() {
     const responseTimeInMicro = response.duration ?? 0;
     const responseTimeInMilli = responseTimeInMicro / 1000;
     if (responseTimeInMilli < 500) return <Badge color="green">{responseTimeInMilli} ms</Badge>;
-    if (responseTimeInMilli > 501 && responseTimeInMilli < 1000) return <Badge color="orange">{responseTimeInMilli} ms</Badge>;
+    if (responseTimeInMilli >= 500 && responseTimeInMilli < 1000) return <Badge color="orange">{responseTimeInMilli} ms</Badge>;
     return <Badge color="red">{responseTimeInMilli} ms</Badge>;
   }
 
@@ -330,7 +331,11 @@ export function HttpClient() {
       });
 
       if (contentType.length > 0 && contentType[0][1].includes("application/json")) {
-        return JSON.stringify(JSON.parse(response.body), null, 2);
+        try {
+          return JSON.stringify(JSON.parse(response.body), null, 2);
+        } catch {
+          return response.body;
+        }
       }
     }
 
@@ -573,15 +578,12 @@ export function HttpClient() {
                 </Select.Content>
               </Select.Root>
             </Box>
-            <Box height="200px">
-              <TextArea
-                value={body}
-                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBody(e.target.value)}
-                placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Raw text content'}
-                style={{ height: '100%' }}
-                disabled={bodyType === 'none'}
-              />
-            </Box>
+            <RequestBodyEditor
+              content={body}
+              onChange={setBody}
+              bodyType={bodyType}
+              height="200px"
+            />
           </Tabs.Content>
         </Tabs.Root>
       </Section>
@@ -601,12 +603,11 @@ export function HttpClient() {
           </Tabs.List>
 
           <Tabs.Content value="body">
-            <Box pt="2">
-              <TextArea
-                value={responseBody}
-                onChange={() => null}
-                style={{ minHeight: "200px"}}
-                ref={responseTextAreaRef}
+            <Box pt="2" style={{ display: 'flex', flexDirection: 'column' }}>
+              <ResponseBodyViewer
+                body={responseBody}
+                headers={response?.headers ?? null}
+                viewerRef={responseTextAreaRef}
               />
             </Box>
           </Tabs.Content>

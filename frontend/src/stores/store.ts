@@ -8,6 +8,7 @@ interface CollectionState {
   selectedCollection: string
   currentFilePath: string
   autoSave: boolean
+  showAutoSaveModal: boolean
   setCollections: (collections: Collection[]) => void
   addCollection: (collection: Collection) => void
   removeCollection: (collection: Collection) => void
@@ -18,6 +19,7 @@ interface CollectionState {
   setExpandedNodes: (nodes: string[]) => void
   resetExpandedNodes: () => void
   setAutoSave: (autoSave: boolean) => void
+  setShowAutoSaveModal: (show: boolean) => void
 }
 
 export const useCollectionStore = create<CollectionState>()(
@@ -27,7 +29,8 @@ export const useCollectionStore = create<CollectionState>()(
       expandedNodes: [],
       selectedCollection: '',
       currentFilePath: '',
-      autoSave: true,
+      autoSave: false,
+      showAutoSaveModal: false,
 
       setCollections: (collections: Collection[]) => set({ collections: collections }),
       addCollection: (collection: Collection) => set((state) => ({ collections: [...state.collections, collection] })),
@@ -43,7 +46,16 @@ export const useCollectionStore = create<CollectionState>()(
       resetExpandedNodes: () => set({ expandedNodes: [] }),
 
       setAutoSave: (autoSave: boolean) => set({ autoSave: autoSave }),
+      setShowAutoSaveModal: (show: boolean) => set({ showAutoSaveModal: show }),
     }),
-    { name: "postier-store" },
+    {
+      name: "postier-store",
+      // Exclude transient UI state from persistence so the modal is never
+      // restored on reload without a real `loadCollection` action.
+      partialize: (state) => {
+        const { showAutoSaveModal, ...persistedState } = state;
+        return persistedState;
+      },
+    },
   ),
 )
