@@ -7,6 +7,7 @@ import { main } from "../../wailsjs/go/models";
 import {Collection} from "../types/common";
 import { useCollectionStore } from "../stores/store";
 import { Alert, ConfirmAlert, InfoAlert } from "./Alert";
+import { AutoSaveModal } from "./AutoSaveModal";
 
 type DirectoryTree = main.DirectoryTree;
 type FileSystemEntry = main.FileSystemEntry;
@@ -17,6 +18,8 @@ export function FileTree() {
     expandedNodes,
     selectedCollection,
     currentFilePath: currentFile,
+    autoSave,
+    showAutoSaveModal,
     setCollections,
     addCollection,
     removeCollection,
@@ -24,7 +27,9 @@ export function FileTree() {
     resetSelectedCollection,
     setCurrentFilePath: setCurrentFile,
     resetCurrentFilePath: resetCurrentFile,
-    setExpandedNodes
+    setExpandedNodes,
+    setAutoSave,
+    setShowAutoSaveModal,
   } = useCollectionStore();
 
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; hasChildren: boolean } | null>(null);
@@ -170,6 +175,10 @@ export function FileTree() {
       };
 
       addCollection(collection);
+
+      if (!autoSave) {
+        setShowAutoSaveModal(true);
+      }
 
       if (!expandedNodes.includes(collection.path)) {
         setExpandedNodes([...expandedNodes, collection.path]);
@@ -756,6 +765,15 @@ export function FileTree() {
           ))}
         </Box>
       </Alert>
+
+      <AutoSaveModal
+        isOpen={showAutoSaveModal}
+        onClose={() => setShowAutoSaveModal(false)}
+        onEnableAutoSave={() => {
+          setAutoSave(true);
+          setShowAutoSaveModal(false);
+        }}
+      />
     </Flex>
   );
 }
