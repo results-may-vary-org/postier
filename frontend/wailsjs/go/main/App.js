@@ -38,6 +38,14 @@ export function OpenFolderDialog() {
   return window['go']['main']['App']['OpenFolderDialog']();
 }
 
+export function ReadEnvFile(arg1) {
+  return window['go']['main']['App']['ReadEnvFile'](arg1);
+}
+
+export function WriteEnvFile(arg1, arg2) {
+  return window['go']['main']['App']['WriteEnvFile'](arg1, arg2);
+}
+
 export function ReadFile(arg1) {
   return window['go']['main']['App']['ReadFile'](arg1);
 }

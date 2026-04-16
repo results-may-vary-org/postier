@@ -20,6 +20,10 @@ export function MakeRequest(arg1:main.HTTPRequest):Promise<main.HTTPResponse>;
 
 export function OpenFolderDialog():Promise<string>;
 
+export function ReadEnvFile(arg1:string):Promise<Record<string,string>>;
+
+export function WriteEnvFile(arg1:string,arg2:Record<string,string>):Promise<void>;
+
 export function ReadFile(arg1:string):Promise<string>;
 
 export function RenameEntry(arg1:string,arg2:string):Promise<void>;

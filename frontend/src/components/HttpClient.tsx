@@ -248,12 +248,14 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
         }
       });
 
+      const currentCollection = collections.find((c: any) => c.id === selectedCollection);
       const request = new main.HTTPRequest({
         method,
         url,
         headers: headersMap,
         body: bodyType === 'none' ? '' : body,
         query: queryMap,
+        envFilePath: currentCollection?.path ?? '',
       });
 
       const result = await MakeRequest(request);

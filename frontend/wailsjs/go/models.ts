@@ -104,7 +104,8 @@ export namespace main {
 	    headers: Record<string, string>;
 	    body: string;
 	    query: Record<string, string>;
-	
+	    envFilePath?: string;
+
 	    static createFrom(source: any = {}) {
 	        return new HTTPRequest(source);
 	    }
@@ -116,6 +117,7 @@ export namespace main {
 	        this.headers = source["headers"];
 	        this.body = source["body"];
 	        this.query = source["query"];
+	        this.envFilePath = source["envFilePath"];
 	    }
 	}
 	export class HTTPResponse {
