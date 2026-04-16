@@ -1,5 +1,61 @@
+/* ── Noto Sans UI font ─────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('./assets/fonts/NotoSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('./assets/fonts/NotoSans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('./assets/fonts/NotoSans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Noto Sans Mono (editors / code) ───────────────────────────────────── */
+@font-face {
+  font-family: 'Noto Sans Mono';
+  src: url('./assets/fonts/NotoSansMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Mono';
+  src: url('./assets/fonts/NotoSansMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Apply Noto Sans across the whole UI ───────────────────────────────── */
+body {
+  font-family: 'Noto Sans', sans-serif;
+}
+
+/* Increase base font sizes for improved legibility across the UI */
 .radix-themes {
   --cursor-button: pointer;
+  --default-font-family: 'Noto Sans', sans-serif;
+  --code-font-family: 'Noto Sans Mono', monospace;
+  --font-size-1: 13px;
+  --font-size-2: 15px;
+  --font-size-3: 17px;
+  --line-height-1: 1.5;
+  --line-height-2: 1.5;
+  --line-height-3: 1.5;
 }
 
 #request {
