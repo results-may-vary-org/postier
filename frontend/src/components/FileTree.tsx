@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
-import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon, MixerVerticalIcon } from "@radix-ui/react-icons";
-import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry } from "../../wailsjs/go/main/App";
+import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon, MixerVerticalIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
+import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry, OpenInFileManager } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { Collection } from "../types/common";
 import { useCollectionStore } from "../stores/store";
@@ -600,6 +600,10 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
             <ContextMenu.Item onClick={() => requestRename(node.entry)}>
               Rename
             </ContextMenu.Item>
+            <ContextMenu.Item onClick={() => OpenInFileManager(node.entry.path)}>
+              <ExternalLinkIcon /> Open in file manager
+            </ContextMenu.Item>
+            <ContextMenu.Separator />
             <ContextMenu.Item onClick={() => deleteNode(node.entry.path)} color="red">
               Delete
             </ContextMenu.Item>

@@ -105,7 +105,7 @@ export namespace main {
 	    body: string;
 	    query: Record<string, string>;
 	    envFilePath?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new HTTPRequest(source);
 	    }

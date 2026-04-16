@@ -13,7 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	goruntime "runtime"
+	"os/exec"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -428,9 +431,36 @@ func (a *App) RenameEntry(oldPath string, newPath string) error {
 	return os.Rename(oldPath, newPath)
 }
 
+// OpenInFileManager opens the system file manager at the given path.
+// For files the parent directory is opened so the containing folder is shown.
+// Uses xdg-open on Linux, open on macOS, and explorer on Windows.
+func (a *App) OpenInFileManager(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("path not found: %v", err)
+	}
+
+	target := path
+	if !info.IsDir() {
+		target = filepath.Dir(path)
+	}
+
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", target)
+	case "windows":
+		cmd = exec.Command("explorer", target)
+	default:
+		cmd = exec.Command("xdg-open", target)
+	}
+
+	return cmd.Start()
+}
+
 // OpenFolderDialog opens a folder selection dialog and returns the selected path
 func (a *App) OpenFolderDialog() (string, error) {
-	selectedPath, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+	selectedPath, err := wailsruntime.OpenDirectoryDialog(a.ctx, wailsruntime.OpenDialogOptions{
 		Title: "Select Collection Folder",
 	})
 
