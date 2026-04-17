@@ -166,6 +166,16 @@ type HTTPRequest struct {
 	EnvFilePath string            `json:"envFilePath,omitempty"` // path to the collection root; .postier.env is resolved from it
 }
 
+// EffectiveRequest holds a snapshot of the request with the URL fully built
+// (query params encoded). Used for both raw (pre-interpolation) and effective
+// (post-interpolation) representations returned alongside the response.
+type EffectiveRequest struct {
+	Method  string            `json:"method"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}
+
 // HTTPResponse represents the response from an HTTP request
 type HTTPResponse struct {
 	StatusCode int                 `json:"statusCode"`
@@ -175,6 +185,17 @@ type HTTPResponse struct {
 	Body       string              `json:"body"`
 	Size       int64               `json:"size"`
 	Duration   int64               `json:"duration"` // in milliseconds
+	Raw        EffectiveRequest    `json:"raw"`       // pre-interpolation, {{placeholders}} intact
+	Effective  EffectiveRequest    `json:"effective"` // post-interpolation, vars resolved
+}
+
+// copyMap returns a shallow copy of m so the original is not mutated.
+func copyMap(m map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }
 
 // HTTPCookie represents an HTTP cookie
@@ -231,6 +252,28 @@ func (a *App) WriteEnvFile(collectionPath string, vars map[string]string) error 
 func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 	startTime := time.Now()
 
+	// Capture the raw request snapshot before any interpolation.
+	// Build the raw URL with query params merged so it mirrors the effective shape.
+	rawHeaders := copyMap(req.Headers)
+	rawBody := req.Body
+	rawURL := req.URL
+	if rawParsed, err := url.Parse(rawURL); err == nil {
+		if len(req.Query) > 0 {
+			q := rawParsed.Query()
+			for k, v := range req.Query {
+				q.Add(k, v)
+			}
+			rawParsed.RawQuery = q.Encode()
+		}
+		rawURL = rawParsed.String()
+	}
+	raw := EffectiveRequest{
+		Method:  req.Method,
+		URL:     rawURL,
+		Headers: rawHeaders,
+		Body:    rawBody,
+	}
+
 	// Apply environment variable substitution when a collection path is provided
 	if req.EnvFilePath != "" {
 		vars, err := a.ReadEnvFile(req.EnvFilePath)
@@ -264,6 +307,14 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			query.Add(key, value)
 		}
 		parsedURL.RawQuery = query.Encode()
+	}
+
+	// Capture effective request (post-interpolation, full URL)
+	effective := EffectiveRequest{
+		Method:  req.Method,
+		URL:     parsedURL.String(),
+		Headers: req.Headers,
+		Body:    req.Body,
 	}
 
 	// Create HTTP request
@@ -338,6 +389,8 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		Body:       string(bodyBytes),
 		Size:       int64(len(bodyBytes)),
 		Duration:   time.Since(startTime).Microseconds(),
+		Raw:        raw,
+		Effective:  effective,
 	}
 }
 
