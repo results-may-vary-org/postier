@@ -12,9 +12,13 @@ export function DeleteFile(arg1:string):Promise<void>;
 
 export function GetDirectoryTree(arg1:string):Promise<main.DirectoryTree>;
 
+export function GetThemesDir():Promise<string>;
+
 export function ListPostierFiles(arg1:string):Promise<Array<main.FileSystemEntry>>;
 
 export function LoadPostierRequest(arg1:string):Promise<main.PostierRequest>;
+
+export function LoadUserThemes():Promise<Array<main.UserTheme>>;
 
 export function MakeRequest(arg1:main.HTTPRequest):Promise<main.HTTPResponse>;
 

@@ -431,6 +431,63 @@ func (a *App) RenameEntry(oldPath string, newPath string) error {
 	return os.Rename(oldPath, newPath)
 }
 
+// UserTheme represents a theme loaded from the user's themes directory.
+type UserTheme struct {
+	Name       string `json:"name"`
+	Appearance string `json:"appearance"` // "light" | "dark"
+	Accent     string `json:"accent"`
+	Background string `json:"background"`
+	Gray       string `json:"gray"`
+}
+
+// GetThemesDir returns the path to the user themes directory, creating it if absent.
+func (a *App) GetThemesDir() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot resolve config dir: %v", err)
+	}
+	dir := filepath.Join(configDir, "postier", "themes")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("cannot create themes dir: %v", err)
+	}
+	return dir, nil
+}
+
+// LoadUserThemes reads all .json files from the user themes directory and
+// returns the valid ones. Files with missing name or invalid appearance are
+// silently skipped.
+func (a *App) LoadUserThemes() ([]UserTheme, error) {
+	dir, err := a.GetThemesDir()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read themes dir: %v", err)
+	}
+
+	var themes []UserTheme
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			continue
+		}
+		var t UserTheme
+		if err := json.Unmarshal(content, &t); err != nil {
+			continue
+		}
+		if t.Name == "" || (t.Appearance != "light" && t.Appearance != "dark") {
+			continue
+		}
+		themes = append(themes, t)
+	}
+	return themes, nil
+}
+
 // OpenInFileManager opens the system file manager at the given path.
 // For files the parent directory is opened so the containing folder is shown.
 // Uses xdg-open on Linux, open on macOS, and explorer on Windows.

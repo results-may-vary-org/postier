@@ -9,6 +9,7 @@ interface CollectionState {
   currentFilePath: string
   autoSave: boolean
   showAutoSaveModal: boolean
+  selectedThemeId: string
   setCollections: (collections: Collection[]) => void
   addCollection: (collection: Collection) => void
   removeCollection: (collection: Collection) => void
@@ -20,6 +21,7 @@ interface CollectionState {
   resetExpandedNodes: () => void
   setAutoSave: (autoSave: boolean) => void
   setShowAutoSaveModal: (show: boolean) => void
+  setSelectedThemeId: (id: string) => void
 }
 
 export const useCollectionStore = create<CollectionState>()(
@@ -31,6 +33,7 @@ export const useCollectionStore = create<CollectionState>()(
       currentFilePath: '',
       autoSave: false,
       showAutoSaveModal: false,
+      selectedThemeId: 'default',
 
       setCollections: (collections: Collection[]) => set({ collections: collections }),
       addCollection: (collection: Collection) => set((state) => ({ collections: [...state.collections, collection] })),
@@ -47,6 +50,7 @@ export const useCollectionStore = create<CollectionState>()(
 
       setAutoSave: (autoSave: boolean) => set({ autoSave: autoSave }),
       setShowAutoSaveModal: (show: boolean) => set({ showAutoSaveModal: show }),
+      setSelectedThemeId: (id: string) => set({ selectedThemeId: id }),
     }),
     {
       name: "postier-store",
