@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -677,5 +678,80 @@ func TestLoadUserThemes_SkipsInvalidFiles(t *testing.T) {
 	}
 	if themes[0].Name != "Good" {
 		t.Errorf("unexpected theme: %+v", themes[0])
+	}
+}
+
+// TestLoadUserThemes_AcceptsCompleteTheme verifies that a theme file containing
+// only a "vars" map (no accent/background/gray) is accepted as a complete theme.
+// Expected: exactly one theme returned with a non-empty Vars map.
+func TestLoadUserThemes_AcceptsCompleteTheme(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	dir, err := newApp().GetThemesDir()
+	if err != nil {
+		t.Fatalf("GetThemesDir: %v", err)
+	}
+	content := `{"name":"Complete","appearance":"dark","vars":{"--color-background":"#0f191f","--accent-9":"#61ff00"}}`
+	if err := os.WriteFile(filepath.Join(dir, "complete.json"), []byte(content), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	themes, err := newApp().LoadUserThemes()
+	if err != nil {
+		t.Fatalf("LoadUserThemes: %v", err)
+	}
+	if len(themes) != 1 {
+		t.Fatalf("expected 1 theme, got %d", len(themes))
+	}
+	if themes[0].Name != "Complete" || len(themes[0].Vars) == 0 {
+		t.Errorf("unexpected theme: %+v", themes[0])
+	}
+}
+
+// TestSeedThemesDir_WritesExamplesOnFirstRun verifies that seedThemesDir creates
+// two example JSON files when the directory is empty.
+// Expected: agrume.json and neovim-dark.json exist after the call.
+func TestSeedThemesDir_WritesExamplesOnFirstRun(t *testing.T) {
+	dir := t.TempDir()
+	seedThemesDir(dir)
+
+	for _, name := range []string{"agrume.json", "neovim-dark.json"} {
+		path := filepath.Join(dir, name)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			t.Errorf("expected %s to be created, but it does not exist", name)
+		}
+	}
+}
+
+// TestSeedThemesDir_DoesNotOverwriteExisting verifies that seedThemesDir is a
+// no-op when the directory already contains at least one JSON file.
+// Expected: the pre-existing file is untouched; no additional files are created.
+func TestSeedThemesDir_DoesNotOverwriteExisting(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "my-theme.json")
+	original := []byte(`{"name":"existing"}`)
+	if err := os.WriteFile(existing, original, 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	seedThemesDir(dir)
+
+	data, err := os.ReadFile(existing)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if string(data) != string(original) {
+		t.Error("existing theme file was modified")
+	}
+	entries, _ := os.ReadDir(dir)
+	jsonCount := 0
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".json") {
+			jsonCount++
+		}
+	}
+	if jsonCount != 1 {
+		t.Errorf("expected 1 JSON file, got %d", jsonCount)
 	}
 }

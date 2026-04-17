@@ -217,9 +217,10 @@ export namespace main {
 	export class UserTheme {
 	    name: string;
 	    appearance: string;
-	    accent: string;
-	    background: string;
-	    gray: string;
+	    accent?: string;
+	    background?: string;
+	    gray?: string;
+	    vars?: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new UserTheme(source);
@@ -232,6 +233,7 @@ export namespace main {
 	        this.accent = source["accent"];
 	        this.background = source["background"];
 	        this.gray = source["gray"];
+	        this.vars = source["vars"];
 	    }
 	}
 
