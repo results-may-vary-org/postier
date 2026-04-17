@@ -22,12 +22,20 @@ export function GetDirectoryTree(arg1) {
   return window['go']['main']['App']['GetDirectoryTree'](arg1);
 }
 
+export function GetThemesDir() {
+  return window['go']['main']['App']['GetThemesDir']();
+}
+
 export function ListPostierFiles(arg1) {
   return window['go']['main']['App']['ListPostierFiles'](arg1);
 }
 
 export function LoadPostierRequest(arg1) {
   return window['go']['main']['App']['LoadPostierRequest'](arg1);
+}
+
+export function LoadUserThemes() {
+  return window['go']['main']['App']['LoadUserThemes']();
 }
 
 export function MakeRequest(arg1) {

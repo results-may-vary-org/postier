@@ -547,3 +547,135 @@ func TestListPostierFiles_OnlyReturnsPostierFiles(t *testing.T) {
 		t.Errorf("second file: %+v", files[1])
 	}
 }
+
+// ── GetThemesDir ─────────────────────────────────────────────────────────────
+
+// TestGetThemesDir_CreatesDirectory verifies that GetThemesDir creates the
+// themes directory if it does not exist and returns the path.
+// Expected: the returned path exists on disk after the call.
+func TestGetThemesDir_CreatesDirectory(t *testing.T) {
+	orig, err := os.UserConfigDir()
+	if err != nil {
+		t.Skip("UserConfigDir not available")
+	}
+
+	// Point UserConfigDir to a temp dir by overriding XDG_CONFIG_HOME.
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	dir, err := newApp().GetThemesDir()
+	if err != nil {
+		t.Fatalf("GetThemesDir: %v", err)
+	}
+	if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+		t.Errorf("expected directory %q to exist, but it does not", dir)
+	}
+	_ = orig
+}
+
+// TestGetThemesDir_Idempotent verifies that calling GetThemesDir twice returns
+// the same path and does not error on the second call when the directory
+// already exists.
+// Expected: both calls return the same non-empty path without error.
+func TestGetThemesDir_Idempotent(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	dir1, err := newApp().GetThemesDir()
+	if err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	dir2, err := newApp().GetThemesDir()
+	if err != nil {
+		t.Fatalf("second call: %v", err)
+	}
+	if dir1 != dir2 {
+		t.Errorf("paths differ: %q vs %q", dir1, dir2)
+	}
+}
+
+// ── LoadUserThemes ────────────────────────────────────────────────────────────
+
+// TestLoadUserThemes_EmptyDir verifies that LoadUserThemes returns an empty
+// (non-nil) slice when the themes directory contains no JSON files.
+// Expected: empty slice, no error.
+func TestLoadUserThemes_EmptyDir(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	themes, err := newApp().LoadUserThemes()
+	if err != nil {
+		t.Fatalf("LoadUserThemes: %v", err)
+	}
+	if len(themes) != 0 {
+		t.Errorf("expected 0 themes, got %d", len(themes))
+	}
+}
+
+// TestLoadUserThemes_ParsesValidFile verifies that a well-formed JSON theme
+// file is parsed and returned with all fields populated.
+// Expected: exactly one theme whose fields match the file content.
+func TestLoadUserThemes_ParsesValidFile(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	// Pre-create the themes dir and drop a valid theme file.
+	dir, err := newApp().GetThemesDir()
+	if err != nil {
+		t.Fatalf("GetThemesDir: %v", err)
+	}
+	content := `{"name":"My Theme","appearance":"dark","accent":"#ff0000","background":"#000000","gray":"#888888"}`
+	if err := os.WriteFile(filepath.Join(dir, "my-theme.json"), []byte(content), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	themes, err := newApp().LoadUserThemes()
+	if err != nil {
+		t.Fatalf("LoadUserThemes: %v", err)
+	}
+	if len(themes) != 1 {
+		t.Fatalf("expected 1 theme, got %d", len(themes))
+	}
+	th := themes[0]
+	if th.Name != "My Theme" || th.Appearance != "dark" || th.Accent != "#ff0000" {
+		t.Errorf("unexpected theme fields: %+v", th)
+	}
+}
+
+// TestLoadUserThemes_SkipsInvalidFiles verifies that non-JSON files and
+// malformed JSON files are silently ignored and do not prevent valid themes
+// from being returned.
+// Expected: only the valid theme is returned; invalid files are skipped.
+func TestLoadUserThemes_SkipsInvalidFiles(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	dir, err := newApp().GetThemesDir()
+	if err != nil {
+		t.Fatalf("GetThemesDir: %v", err)
+	}
+
+	// Valid theme.
+	valid := `{"name":"Good","appearance":"light","accent":"#aabbcc","background":"#ffffff","gray":"#cccccc"}`
+	os.WriteFile(filepath.Join(dir, "good.json"), []byte(valid), 0644)
+
+	// Malformed JSON.
+	os.WriteFile(filepath.Join(dir, "bad.json"), []byte(`{not valid json`), 0644)
+
+	// Missing required fields (name is empty).
+	os.WriteFile(filepath.Join(dir, "noname.json"), []byte(`{"appearance":"dark","accent":"#ff0000","background":"#000000","gray":"#888888"}`), 0644)
+
+	// Non-JSON file (should be ignored by extension check).
+	os.WriteFile(filepath.Join(dir, "readme.txt"), []byte("ignore me"), 0644)
+
+	themes, err := newApp().LoadUserThemes()
+	if err != nil {
+		t.Fatalf("LoadUserThemes: %v", err)
+	}
+	if len(themes) != 1 {
+		t.Fatalf("expected 1 theme, got %d: %+v", len(themes), themes)
+	}
+	if themes[0].Name != "Good" {
+		t.Errorf("unexpected theme: %+v", themes[0])
+	}
+}

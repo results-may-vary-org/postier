@@ -214,6 +214,26 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class UserTheme {
+	    name: string;
+	    appearance: string;
+	    accent: string;
+	    background: string;
+	    gray: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserTheme(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.appearance = source["appearance"];
+	        this.accent = source["accent"];
+	        this.background = source["background"];
+	        this.gray = source["gray"];
+	    }
+	}
 
 }
 
