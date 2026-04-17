@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -176,6 +178,34 @@ type EffectiveRequest struct {
 	Body    string            `json:"body"`
 }
 
+// TimingPhase records how long a named phase of the request took.
+type TimingPhase struct {
+	Label    string `json:"label"`
+	Duration int64  `json:"duration"` // milliseconds
+}
+
+// RequestTrace holds the log lines and per-phase timing for a request.
+type RequestTrace struct {
+	Logs    []string      `json:"logs"`
+	Timings []TimingPhase `json:"timings"`
+}
+
+// tlsVersionName returns a human-readable TLS version string.
+func tlsVersionName(v uint16) string {
+	switch v {
+	case tls.VersionTLS10:
+		return "TLSv1.0"
+	case tls.VersionTLS11:
+		return "TLSv1.1"
+	case tls.VersionTLS12:
+		return "TLSv1.2"
+	case tls.VersionTLS13:
+		return "TLSv1.3"
+	default:
+		return fmt.Sprintf("TLS(0x%04x)", v)
+	}
+}
+
 // HTTPResponse represents the response from an HTTP request
 type HTTPResponse struct {
 	StatusCode int                 `json:"statusCode"`
@@ -187,6 +217,7 @@ type HTTPResponse struct {
 	Duration   int64               `json:"duration"` // in milliseconds
 	Raw        EffectiveRequest    `json:"raw"`       // pre-interpolation, {{placeholders}} intact
 	Effective  EffectiveRequest    `json:"effective"` // post-interpolation, vars resolved
+	Trace      RequestTrace        `json:"trace"`     // log lines and per-phase timings
 }
 
 // copyMap returns a shallow copy of m so the original is not mutated.
@@ -252,8 +283,24 @@ func (a *App) WriteEnvFile(collectionPath string, vars map[string]string) error 
 func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 	startTime := time.Now()
 
-	// Capture the raw request snapshot before any interpolation.
-	// Build the raw URL with query params merged so it mirrors the effective shape.
+	// ── Trace infrastructure ──────────────────────────────────────────────────
+	var (
+		traceLog      []string
+		traceTimings  []TimingPhase
+		dnsStart      time.Time
+		connectStart  time.Time
+		tlsStart      time.Time
+		lastHandshake time.Time // latest of ConnectDone / TLSHandshakeDone
+		firstByteTime time.Time
+	)
+	addLog := func(msg string) {
+		ts := time.Now().UTC().Format("15:04:05.000Z")
+		traceLog = append(traceLog, "["+ts+"] "+msg)
+	}
+	addLog("Preparing request to " + req.URL)
+	addLog(req.Method + " " + req.URL)
+
+	// ── Raw snapshot (before interpolation) ──────────────────────────────────
 	rawHeaders := copyMap(req.Headers)
 	rawBody := req.Body
 	rawURL := req.URL
@@ -274,7 +321,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		Body:    rawBody,
 	}
 
-	// Apply environment variable substitution when a collection path is provided
+	// ── Environment variable interpolation ───────────────────────────────────
 	if req.EnvFilePath != "" {
 		vars, err := a.ReadEnvFile(req.EnvFilePath)
 		if err == nil && len(vars) > 0 {
@@ -289,7 +336,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		}
 	}
 
-	// Parse and validate URL
+	// ── URL parsing ───────────────────────────────────────────────────────────
 	parsedURL, err := url.Parse(req.URL)
 	if err != nil {
 		return HTTPResponse{
@@ -297,10 +344,10 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			Status:     "Invalid URL",
 			Body:       fmt.Sprintf("Error parsing URL: %v", err),
 			Duration:   time.Since(startTime).Microseconds(),
+			Trace:      RequestTrace{Logs: traceLog, Timings: traceTimings},
 		}
 	}
 
-	// Add query parameters
 	if len(req.Query) > 0 {
 		query := parsedURL.Query()
 		for key, value := range req.Query {
@@ -309,7 +356,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		parsedURL.RawQuery = query.Encode()
 	}
 
-	// Capture effective request (post-interpolation, full URL)
+	// ── Effective snapshot (post-interpolation, full URL) ─────────────────────
 	effective := EffectiveRequest{
 		Method:  req.Method,
 		URL:     parsedURL.String(),
@@ -317,7 +364,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		Body:    req.Body,
 	}
 
-	// Create HTTP request
+	// ── Build HTTP request ────────────────────────────────────────────────────
 	var bodyReader io.Reader
 	if req.Body != "" {
 		bodyReader = strings.NewReader(req.Body)
@@ -330,32 +377,107 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			Status:     "Request Creation Error",
 			Body:       fmt.Sprintf("Error creating request: %v", err),
 			Duration:   time.Since(startTime).Microseconds(),
+			Trace:      RequestTrace{Logs: traceLog, Timings: traceTimings},
 		}
 	}
 
-	// Add headers
 	for key, value := range req.Headers {
 		httpReq.Header.Set(key, value)
 	}
 
-	// Create HTTP client with timeout
+	// ── Attach httptrace ──────────────────────────────────────────────────────
+	parsedHost := parsedURL.Hostname()
+	httpTrace := &httptrace.ClientTrace{
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			dnsStart = time.Now()
+			addLog("DNS lookup: " + info.Host)
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			dur := time.Since(dnsStart).Milliseconds()
+			if info.Err == nil {
+				for _, addr := range info.Addrs {
+					addLog("DNS lookup: " + parsedHost + " -> " + addr.String())
+				}
+			} else {
+				addLog("DNS error: " + info.Err.Error())
+			}
+			traceTimings = append(traceTimings, TimingPhase{Label: "DNS Lookup", Duration: dur})
+		},
+		ConnectStart: func(network, addr string) {
+			connectStart = time.Now()
+			addLog("Trying " + addr + "... (" + network + ")")
+		},
+		ConnectDone: func(network, addr string, err error) {
+			dur := time.Since(connectStart).Milliseconds()
+			if err == nil {
+				lastHandshake = time.Now()
+				addLog(fmt.Sprintf("Connected to %s (%s)", parsedHost, addr))
+			} else {
+				addLog("Connect error: " + err.Error())
+			}
+			traceTimings = append(traceTimings, TimingPhase{Label: "TCP Connect", Duration: dur})
+		},
+		TLSHandshakeStart: func() {
+			tlsStart = time.Now()
+			addLog("TLS handshake started")
+		},
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			dur := time.Since(tlsStart).Milliseconds()
+			if err == nil {
+				lastHandshake = time.Now()
+				vName := tlsVersionName(state.Version)
+				cName := tls.CipherSuiteName(state.CipherSuite)
+				addLog(fmt.Sprintf("SSL connection using %s / %s", vName, cName))
+				if len(state.PeerCertificates) > 0 {
+					cert := state.PeerCertificates[0]
+					addLog("Server certificate:")
+					addLog("  subject: CN=" + cert.Subject.CommonName)
+					addLog("  start date: " + cert.NotBefore.UTC().Format("Jan 02 15:04:05 2006 GMT"))
+					addLog("  expire date: " + cert.NotAfter.UTC().Format("Jan 02 15:04:05 2006 GMT"))
+					addLog("  issuer: " + cert.Issuer.CommonName)
+				}
+				traceTimings = append(traceTimings, TimingPhase{Label: "TLS Handshake", Duration: dur})
+			} else {
+				addLog("TLS error: " + err.Error())
+			}
+		},
+		GotFirstResponseByte: func() {
+			firstByteTime = time.Now()
+			var waitDur int64
+			if !lastHandshake.IsZero() {
+				waitDur = firstByteTime.Sub(lastHandshake).Milliseconds()
+			} else {
+				waitDur = time.Since(startTime).Milliseconds()
+			}
+			traceTimings = append(traceTimings, TimingPhase{Label: "Waiting (TTFB)", Duration: waitDur})
+		},
+	}
+	httpReq = httpReq.WithContext(httptrace.WithClientTrace(httpReq.Context(), httpTrace))
+
+	// ── Execute ───────────────────────────────────────────────────────────────
 	client := &http.Client{
 		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
 	}
 
-	// Make the request
 	resp, err := client.Do(httpReq)
 	if err != nil {
+		addLog("Request error: " + err.Error())
 		return HTTPResponse{
 			StatusCode: 0,
 			Status:     "Request Error",
 			Body:       fmt.Sprintf("Error making request: %v", err),
 			Duration:   time.Since(startTime).Microseconds(),
+			Trace:      RequestTrace{Logs: traceLog, Timings: traceTimings},
 		}
 	}
 	defer resp.Body.Close()
 
-	// Read response body
+	addLog(fmt.Sprintf("HTTP/%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
+
+	// ── Read body ─────────────────────────────────────────────────────────────
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return HTTPResponse{
@@ -364,10 +486,20 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			Headers:    resp.Header,
 			Body:       fmt.Sprintf("Error reading response body: %v", err),
 			Duration:   time.Since(startTime).Microseconds(),
+			Trace:      RequestTrace{Logs: traceLog, Timings: traceTimings},
 		}
 	}
 
-	// Extract cookies
+	// Transfer and total timing
+	if !firstByteTime.IsZero() {
+		transferDur := time.Since(firstByteTime).Milliseconds()
+		traceTimings = append(traceTimings, TimingPhase{Label: "Transfer", Duration: transferDur})
+	}
+	totalDur := time.Since(startTime).Milliseconds()
+	traceTimings = append(traceTimings, TimingPhase{Label: "Total", Duration: totalDur})
+	addLog(fmt.Sprintf("Request completed in %d ms", totalDur))
+
+	// ── Extract cookies ───────────────────────────────────────────────────────
 	var cookies []HTTPCookie
 	for _, cookie := range resp.Cookies() {
 		cookies = append(cookies, HTTPCookie{
@@ -391,6 +523,7 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		Duration:   time.Since(startTime).Microseconds(),
 		Raw:        raw,
 		Effective:  effective,
+		Trace:      RequestTrace{Logs: traceLog, Timings: traceTimings},
 	}
 }
 
