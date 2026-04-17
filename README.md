@@ -45,7 +45,8 @@ You can join by contributing or via a [tip](https://github.com/sponsors/bouteill
 
 - **User Interface**
   - Clean design built on Radix UI
-  - Dark / Light / System theme support
+  - Built-in themes: Catppuccin (Mocha, Macchiato, Frappé, Latte) and Rosé Pine (Main, Moon, Dawn)
+  - Custom themes: drop a JSON file in a local folder, reload without restarting — [see docs/themes.md](docs/themes.md)
   - Persistent state across restarts (collections, open file, settings)
 
 ## Roadmap
