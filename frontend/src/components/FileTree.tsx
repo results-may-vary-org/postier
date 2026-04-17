@@ -534,7 +534,7 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
               style={{
                 paddingLeft: `${depth * 20 + 8}px`,
                 cursor: 'pointer',
-                borderRadius: '4px',
+                // borderRadius: '4px',
                 backgroundColor: bgColor,
               }}
               className={bgColor ? undefined : "hover:bg-gray-100"}
@@ -627,14 +627,14 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
           <ScrollArea style={{ flex: 1 }}>
             {collections.map(collection => (
               <Box key={collection.id} mb="2">
-                {/* ── Merged collection header ── */}
+                {/* collection header */}
                 <Flex
                   justify="between"
                   align="center"
                   p="2"
                   style={{
-                    backgroundColor: selectedCollectionId === collection.id ? 'var(--accent-2)' : 'var(--gray-2)',
-                    border: '1px solid var(--accent-6)',
+                    backgroundColor: selectedCollectionId === collection.id ? 'var(--accent-2)' : 'var(--accent-2)',
+                    border: selectedCollectionId === collection.id ? '1px solid var(--accent-3)' : '1px solid transparent',
                     borderRadius: '4px',
                     cursor: 'pointer',
                   }}
@@ -668,7 +668,7 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
 
                   {/* Right: action buttons — stop propagation so they don't toggle expand */}
                   <Flex
-                    gap="1"
+                    gap="2"
                     align="center"
                     onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
