@@ -1,39 +1,31 @@
 export namespace main {
 	
-	export class FileSystemEntry {
-	    name: string;
-	    path: string;
-	    isDir: boolean;
-	    size: number;
-	    modified: number;
-	    method: string;
+	export class TimingPhase {
+	    label: string;
+	    duration: number;
 	
 	    static createFrom(source: any = {}) {
-	        return new FileSystemEntry(source);
+	        return new TimingPhase(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.path = source["path"];
-	        this.isDir = source["isDir"];
-	        this.size = source["size"];
-	        this.modified = source["modified"];
-	        this.method = source["method"];
+	        this.label = source["label"];
+	        this.duration = source["duration"];
 	    }
 	}
-	export class DirectoryTree {
-	    entry: FileSystemEntry;
-	    children?: DirectoryTree[];
+	export class RequestTrace {
+	    logs: string[];
+	    timings: TimingPhase[];
 	
 	    static createFrom(source: any = {}) {
-	        return new DirectoryTree(source);
+	        return new RequestTrace(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.entry = this.convertValues(source["entry"], FileSystemEntry);
-	        this.children = this.convertValues(source["children"], DirectoryTree);
+	        this.logs = source["logs"];
+	        this.timings = this.convertValues(source["timings"], TimingPhase);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -72,7 +64,6 @@ export namespace main {
 	        this.body = source["body"];
 	    }
 	}
-	
 	export class HTTPCookie {
 	    name: string;
 	    value: string;
@@ -96,74 +87,6 @@ export namespace main {
 	        this.expires = this.convertValues(source["expires"], null);
 	        this.secure = source["secure"];
 	        this.httpOnly = source["httpOnly"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class HTTPRequest {
-	    method: string;
-	    url: string;
-	    headers: Record<string, string>;
-	    body: string;
-	    query: Record<string, string>;
-	    envFilePath?: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new HTTPRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.method = source["method"];
-	        this.url = source["url"];
-	        this.headers = source["headers"];
-	        this.body = source["body"];
-	        this.query = source["query"];
-	        this.envFilePath = source["envFilePath"];
-	    }
-	}
-	export class TimingPhase {
-	    label: string;
-	    duration: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new TimingPhase(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.label = source["label"];
-	        this.duration = source["duration"];
-	    }
-	}
-	export class RequestTrace {
-	    logs: string[];
-	    timings: TimingPhase[];
-	
-	    static createFrom(source: any = {}) {
-	        return new RequestTrace(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.logs = source["logs"];
-	        this.timings = this.convertValues(source["timings"], TimingPhase);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -232,6 +155,120 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class CollectionRunResult {
+	    filePath: string;
+	    name: string;
+	    response: HTTPResponse;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionRunResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filePath = source["filePath"];
+	        this.name = source["name"];
+	        this.response = this.convertValues(source["response"], HTTPResponse);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FileSystemEntry {
+	    name: string;
+	    path: string;
+	    isDir: boolean;
+	    size: number;
+	    modified: number;
+	    method: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileSystemEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.isDir = source["isDir"];
+	        this.size = source["size"];
+	        this.modified = source["modified"];
+	        this.method = source["method"];
+	    }
+	}
+	export class DirectoryTree {
+	    entry: FileSystemEntry;
+	    children?: DirectoryTree[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DirectoryTree(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.entry = this.convertValues(source["entry"], FileSystemEntry);
+	        this.children = this.convertValues(source["children"], DirectoryTree);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	export class HTTPRequest {
+	    method: string;
+	    url: string;
+	    headers: Record<string, string>;
+	    body: string;
+	    query: Record<string, string>;
+	    envFilePath?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HTTPRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.method = source["method"];
+	        this.url = source["url"];
+	        this.headers = source["headers"];
+	        this.body = source["body"];
+	        this.query = source["query"];
+	        this.envFilePath = source["envFilePath"];
+	    }
+	}
+	
 	export class PostierRequest {
 	    name: string;
 	    description: string;

@@ -293,11 +293,14 @@ func (a *App) resolveResponseRefs(rawString, collectionPath string) string {
 	})
 }
 
-// extractChainedValue resolves a path like "body.data.token", "status", or "headers.X-Auth[0]"
-// against a saved PostierRequest.
+// extractChainedValue resolves a path like "body.data.token", "body[3].id",
+// "status", or "headers.X-Auth[0]" against a saved PostierRequest.
+// The root segment is parsed with parseChainSegment so that "body[3]" is
+// correctly identified as root key "body" with array index 3.
 func extractChainedValue(savedRequest *PostierRequest, extractionPath string) string {
 	pathParts := strings.SplitN(extractionPath, ".", 2)
-	switch pathParts[0] {
+	rootKey, rootIdx := parseChainSegment(pathParts[0])
+	switch rootKey {
 	case "status":
 		return strconv.Itoa(savedRequest.Response.StatusCode)
 	case "headers":
@@ -320,6 +323,15 @@ func extractChainedValue(savedRequest *PostierRequest, extractionPath string) st
 		var parsedBody interface{}
 		if parseErr := json.Unmarshal([]byte(savedRequest.Response.Body), &parsedBody); parseErr != nil {
 			return ""
+		}
+		// If the root segment has an array index (e.g. body[3]), step into that
+		// element before continuing down the remaining path.
+		if rootIdx >= 0 {
+			arr, ok := parsedBody.([]interface{})
+			if !ok || rootIdx >= len(arr) {
+				return ""
+			}
+			parsedBody = arr[rootIdx]
 		}
 		if len(pathParts) < 2 {
 			return fmt.Sprintf("%v", parsedBody)
@@ -435,9 +447,6 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		ts := time.Now().UTC().Format("15:04:05.000Z")
 		traceLog = append(traceLog, "["+ts+"] "+msg)
 	}
-	addLog("Preparing request to " + req.URL)
-	addLog(req.Method + " " + req.URL)
-
 	// ── Raw snapshot (before interpolation) ──────────────────────────────────
 	rawHeaders := copyMap(req.Headers)
 	rawBody := req.Body
@@ -485,6 +494,10 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 			}
 		}
 	}
+
+	// ── Log resolved request (after all interpolation) ───────────────────────
+	addLog("Preparing request to " + req.URL)
+	addLog(req.Method + " " + req.URL)
 
 	// ── URL parsing ───────────────────────────────────────────────────────────
 	parsedURL, err := url.Parse(req.URL)
@@ -886,6 +899,51 @@ func (a *App) ListPostierFiles(directoryPath string) ([]FileSystemEntry, error) 
 // RenameEntry renames or moves a file or directory atomically
 func (a *App) RenameEntry(oldPath string, newPath string) error {
 	return os.Rename(oldPath, newPath)
+}
+
+// CollectionRunResult holds the outcome of a single request within a collection run.
+type CollectionRunResult struct {
+	FilePath string       `json:"filePath"`
+	Name     string       `json:"name"`
+	Response HTTPResponse `json:"response"`
+}
+
+// RunCollection executes a list of .postier files in order, resolving chain references
+// between requests by saving each response to disk before running the next request.
+// When saveResponses is true the response is written back into the .postier file after
+// each request, making its data available for {{@filename|path}} resolution in later requests.
+func (a *App) RunCollection(filePaths []string, envFilePath string, saveResponses bool) []CollectionRunResult {
+	results := make([]CollectionRunResult, 0, len(filePaths))
+	for _, filePath := range filePaths {
+		saved, err := a.LoadPostierRequest(filePath)
+		if err != nil {
+			results = append(results, CollectionRunResult{FilePath: filePath, Name: filePath})
+			continue
+		}
+
+		httpReq := HTTPRequest{
+			Method:      saved.Method,
+			URL:         saved.URL,
+			Headers:     saved.Headers,
+			Body:        saved.Body,
+			Query:       saved.Query,
+			EnvFilePath: envFilePath,
+		}
+
+		resp := a.MakeRequest(httpReq)
+
+		if saveResponses {
+			saved.Response = &resp
+			_ = a.SavePostierRequest(filePath, saved)
+		}
+
+		results = append(results, CollectionRunResult{
+			FilePath: filePath,
+			Name:     saved.Name,
+			Response: resp,
+		})
+	}
+	return results
 }
 
 // UserTheme represents a theme loaded from the user's themes directory.

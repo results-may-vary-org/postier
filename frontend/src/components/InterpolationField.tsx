@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { TextField, Box, Text } from "@radix-ui/themes";
 import { LoadPostierRequest } from "../../wailsjs/go/main/App";
 import { FileEntry, generateJsonPaths } from "../utils/jsonPaths";
@@ -13,16 +14,46 @@ interface InterpolationFieldProps {
 /**
  * A drop-in TextField.Root replacement that provides autocomplete for
  * {{@filename|path}} chain reference syntax.
+ *
+ * Focus model
+ * ───────────
+ * • While the dropdown is closed the native <input> owns focus.
+ * • When the dropdown opens it receives focus (tabIndex -1) so that
+ *   ArrowUp / ArrowDown / Enter / Escape all fire on it without any
+ *   browser-default scrolling or form submission.
+ * • On close (selection, Escape, outside click) focus returns to the input.
+ * • Any printable character typed while the dropdown is focused is forwarded
+ *   into the input so the user can keep narrowing the list without leaving
+ *   the keyboard flow.
  */
 export function InterpolationField({ value, onChange, placeholder, collectionFiles }: InterpolationFieldProps) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [triggerStart, setTriggerStart] = useState(-1);
     const [phase, setPhase] = useState<1 | 2>(1);
     const [chosenFile, setChosenFile] = useState('');
     const pathCacheRef = useRef<Map<string, string[]>>(new Map());
+
+    // ── Focus management ──────────────────────────────────────────────────────
+
+    // Move focus to the dropdown when it opens
+    useEffect(() => {
+        if (isOpen && dropdownRef.current) {
+            dropdownRef.current.focus();
+        }
+    }, [isOpen]);
+
+    const closeDropdown = () => {
+        setIsOpen(false);
+        requestAnimationFrame(() => inputRef.current?.focus());
+    };
+
+    // ── Trigger detection ─────────────────────────────────────────────────────
 
     const findTrigger = (text: string, cursorPos: number): { start: number; typed: string } | null => {
         const before = text.slice(0, cursorPos);
@@ -51,6 +82,15 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
         return paths;
     };
 
+    const openDropdown = (matchList: string[]) => {
+        if (!inputRef.current) return;
+        const r = inputRef.current.getBoundingClientRect();
+        setDropdownRect({ top: r.bottom + window.scrollY, left: r.left + window.scrollX, width: r.width });
+        setSuggestions(matchList);
+        setSelectedIndex(0);
+        setIsOpen(true);
+    };
+
     const computeSuggestions = async (text: string, cursorPos: number) => {
         const trigger = findTrigger(text, cursorPos);
         if (!trigger) { setIsOpen(false); return; }
@@ -60,17 +100,13 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
         const pipeIdx = typed.indexOf('|');
 
         if (pipeIdx < 0) {
-            // Phase 1: filename completion
             setPhase(1);
-            const prefix = typed;
             const matches = collectionFiles
-                .filter(f => f.name.toLowerCase().startsWith(prefix.toLowerCase()))
+                .filter(f => f.name.toLowerCase().startsWith(typed.toLowerCase()))
                 .map(f => f.name);
-            setSuggestions(matches);
-            setSelectedIndex(0);
-            setIsOpen(matches.length > 0);
+            if (matches.length > 0) openDropdown(matches);
+            else setIsOpen(false);
         } else {
-            // Phase 2: path completion
             setPhase(2);
             const filename = typed.slice(0, pipeIdx);
             const partialPath = typed.slice(pipeIdx + 1);
@@ -80,23 +116,22 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
 
             const allPaths = await buildPathSuggestions(file.path);
             const matches = allPaths.filter(p => p.startsWith(partialPath));
-            setSuggestions(matches);
-            setSelectedIndex(0);
-            setIsOpen(matches.length > 0);
+            if (matches.length > 0) openDropdown(matches);
+            else setIsOpen(false);
         }
     };
+
+    // ── Accept ────────────────────────────────────────────────────────────────
 
     const acceptSuggestion = async (suggestion: string) => {
         if (!inputRef.current) return;
         const cursor = inputRef.current.selectionStart ?? value.length;
 
         if (phase === 1) {
-            // Replace from {{@ to cursor with {{@filename|
             const newValue = value.slice(0, triggerStart) + '{{@' + suggestion + '|' + value.slice(cursor);
             onChange(newValue);
-            setIsOpen(false);
+            closeDropdown();
 
-            // Immediately enter phase 2 if the file has a saved response
             const file = collectionFiles.find(f => f.name === suggestion);
             if (file) {
                 const newCursor = triggerStart + 3 + suggestion.length + 1;
@@ -104,49 +139,98 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
                 setPhase(2);
                 setTriggerStart(triggerStart);
                 const allPaths = await buildPathSuggestions(file.path);
-                setSuggestions(allPaths);
-                setSelectedIndex(0);
-                setIsOpen(allPaths.length > 0);
-                // Move cursor after the pipe
+                if (allPaths.length > 0) openDropdown(allPaths);
                 requestAnimationFrame(() => {
                     inputRef.current?.setSelectionRange(newCursor, newCursor);
                 });
             }
         } else {
-            // Replace from {{@ to cursor with {{@filename|path}}
-            const newValue = value.slice(0, triggerStart) + '{{@' + chosenFile + '|' + suggestion + '}}' + value.slice(cursor);
+            const after = value.slice(cursor, cursor + 2);
+            const suffix = after === '}}' ? '' : '}}';
+            const newValue = value.slice(0, triggerStart) + '{{@' + chosenFile + '|' + suggestion + suffix + value.slice(cursor);
             onChange(newValue);
-            setIsOpen(false);
+            closeDropdown();
         }
     };
 
+    // ── Scroll selected item into view ────────────────────────────────────────
+
+    useEffect(() => {
+        itemRefs.current[selectedIndex]?.scrollIntoView({ block: 'nearest' });
+    }, [selectedIndex]);
+
+    // ── Keyboard handlers ─────────────────────────────────────────────────────
+
+    // On the input: open/recompute suggestions; do NOT handle arrow keys here
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onChange(e.target.value);
         computeSuggestions(e.target.value, e.target.selectionStart ?? e.target.value.length);
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!isOpen) return;
+    // On the dropdown div: full navigation + close
+    const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setSelectedIndex(i => Math.min(i + 1, suggestions.length - 1));
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setSelectedIndex(i => Math.max(i - 1, 0));
-        } else if (e.key === 'Tab' || e.key === 'Enter') {
-            if (suggestions[selectedIndex]) {
-                e.preventDefault();
-                acceptSuggestion(suggestions[selectedIndex]);
-            }
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            if (suggestions[selectedIndex]) acceptSuggestion(suggestions[selectedIndex]);
         } else if (e.key === 'Escape') {
-            setIsOpen(false);
+            e.preventDefault();
+            closeDropdown();
+        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            // Printable character — forward to input so the user can keep typing
+            e.preventDefault();
+            const input = inputRef.current;
+            if (!input) return;
+            const start = input.selectionStart ?? value.length;
+            const end = input.selectionEnd ?? value.length;
+            const newValue = value.slice(0, start) + e.key + value.slice(end);
+            onChange(newValue);
+            const newCursor = start + 1;
+            // Re-focus input, restore cursor, then recompute suggestions
+            input.focus();
+            requestAnimationFrame(() => {
+                input.setSelectionRange(newCursor, newCursor);
+                computeSuggestions(newValue, newCursor);
+            });
+        } else if (e.key === 'Backspace') {
+            e.preventDefault();
+            const input = inputRef.current;
+            if (!input) return;
+            const start = input.selectionStart ?? value.length;
+            const end = input.selectionEnd ?? value.length;
+            let newValue: string;
+            let newCursor: number;
+            if (start !== end) {
+                newValue = value.slice(0, start) + value.slice(end);
+                newCursor = start;
+            } else if (start > 0) {
+                newValue = value.slice(0, start - 1) + value.slice(start);
+                newCursor = start - 1;
+            } else {
+                return;
+            }
+            onChange(newValue);
+            input.focus();
+            requestAnimationFrame(() => {
+                input.setSelectionRange(newCursor, newCursor);
+                computeSuggestions(newValue, newCursor);
+            });
         }
     };
 
-    // Close dropdown when clicking outside
+    // ── Click-outside ─────────────────────────────────────────────────────────
+
     useEffect(() => {
         const handler = (e: MouseEvent) => {
-            if (inputRef.current && !inputRef.current.contains(e.target as Node)) {
+            if (
+                inputRef.current && !inputRef.current.contains(e.target as Node) &&
+                dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+            ) {
                 setIsOpen(false);
             }
         };
@@ -154,23 +238,20 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    return (
-        <Box style={{ position: 'relative', width: '100%' }}>
-            <TextField.Root
-                ref={inputRef}
-                type="text"
-                placeholder={placeholder}
-                value={value}
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-            />
-            {isOpen && suggestions.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    zIndex: 1000,
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    const dropdown = isOpen && suggestions.length > 0 && dropdownRect
+        ? ReactDOM.createPortal(
+            <div
+                ref={dropdownRef}
+                tabIndex={-1}
+                onKeyDown={handleDropdownKeyDown}
+                style={{
+                    position: 'fixed',
+                    top: dropdownRect.top,
+                    left: dropdownRect.left,
+                    width: dropdownRect.width,
+                    zIndex: 9999,
                     background: 'var(--color-panel-solid)',
                     border: '1px solid var(--gray-6)',
                     borderRadius: '4px',
@@ -178,24 +259,40 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
                     overflowY: 'auto',
                     marginTop: '2px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                }}>
-                    {suggestions.map((s, i) => (
-                        <div
-                            key={s}
-                            onMouseDown={(e) => { e.preventDefault(); acceptSuggestion(s); }}
-                            style={{
-                                padding: '4px 8px',
-                                cursor: 'pointer',
-                                background: i === selectedIndex ? 'var(--accent-3)' : 'transparent',
-                                fontSize: '12px',
-                                fontFamily: 'monospace',
-                            }}
-                        >
-                            <Text size="1">{s}</Text>
-                        </div>
-                    ))}
-                </div>
-            )}
+                    outline: 'none',
+                }}
+            >
+                {suggestions.map((s, i) => (
+                    <div
+                        key={s}
+                        ref={el => { itemRefs.current[i] = el; }}
+                        onMouseDown={(e) => { e.preventDefault(); acceptSuggestion(s); }}
+                        style={{
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            background: i === selectedIndex ? 'var(--accent-3)' : 'transparent',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                        }}
+                    >
+                        <Text size="1">{s}</Text>
+                    </div>
+                ))}
+            </div>,
+            document.body
+        )
+        : null;
+
+    return (
+        <Box style={{ width: '100%' }}>
+            <TextField.Root
+                ref={inputRef}
+                type="text"
+                placeholder={placeholder}
+                value={value}
+                onChange={handleChange}
+            />
+            {dropdown}
         </Box>
     );
 }

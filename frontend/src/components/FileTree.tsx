@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu } from "@radix-ui/themes";
+import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu, Dialog, Badge } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
-import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon, MixerVerticalIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
-import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry, OpenInFileManager } from "../../wailsjs/go/main/App";
+import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon, MixerVerticalIcon, ExternalLinkIcon, TriangleRightIcon } from "@radix-ui/react-icons";
+import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry, OpenInFileManager, RunCollection } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { Collection } from "../types/common";
 import { useCollectionStore } from "../stores/store";
@@ -44,6 +44,8 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
     setShowAutoSaveModal,
   } = useCollectionStore();
 
+  const [collectionRunResults, setCollectionRunResults] = useState<{ collectionName: string; results: main.CollectionRunResult[] } | null>(null);
+  const [isRunningCollection, setIsRunningCollection] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; name: string; isDir: boolean; hasChildren: boolean } | null>(null);
   const [closeConfirmation, setCloseConfirmation] = useState<{ collectionId: string; collectionName: string } | null>(null);
   const [duplicateCollectionPath, setDuplicateCollectionPath] = useState<string | null>(null);
@@ -472,6 +474,38 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
     return nodes;
   };
 
+  /** Collect all .postier file paths from a tree in display order (depth-first) */
+  const collectFilePaths = (tree: DirectoryTree): string[] => {
+    const paths: string[] = [];
+    const walk = (node: DirectoryTree) => {
+      if (!node.entry.isDir && node.entry.path.endsWith('.postier')) {
+        paths.push(node.entry.path);
+      }
+      node.children?.forEach(walk);
+    };
+    tree.children?.forEach(walk);
+    return paths;
+  };
+
+  /** Run all requests in a collection sequentially, saving responses so chain refs resolve */
+  const handleRunCollection = async (collection: { id: string; name: string; path: string; tree: DirectoryTree }) => {
+    const filePaths = collectFilePaths(collection.tree);
+    if (filePaths.length === 0) return;
+
+    setIsRunningCollection(true);
+    try {
+      const results = await RunCollection(filePaths, collection.path, autoSave);
+      setCollectionRunResults({ collectionName: collection.name, results });
+      if (autoSave) {
+        window.dispatchEvent(new CustomEvent('postier-collection-refresh'));
+      }
+    } catch (err) {
+      console.error('Collection run failed:', err);
+    } finally {
+      setIsRunningCollection(false);
+    }
+  };
+
   /** Renders the HTTP method as a small coloured monospace label.
    *  Falls back to EnvelopeClosedIcon for empty/unknown methods. */
   const MethodBadge = ({ method }: { method: string | undefined }) => {
@@ -688,6 +722,16 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
                       </DropdownMenu.Content>
                     </DropdownMenu.Root>
 
+                    <IconButton
+                      size="1"
+                      variant="ghost"
+                      title="Run all requests in order"
+                      disabled={isRunningCollection}
+                      onClick={() => handleRunCollection(collection)}
+                    >
+                      <TriangleRightIcon />
+                    </IconButton>
+
                     <IconButton size="1" variant="ghost" title="Edit environment variables" onClick={() => setEnvEditorCollection({ id: collection.id, name: collection.name, path: collection.path })}>
                       <MixerVerticalIcon />
                     </IconButton>
@@ -867,6 +911,37 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
           collectionPath={envEditorCollection.path}
         />
       )}
+
+      {/* Collection run results dialog */}
+      <Dialog.Root open={!!collectionRunResults} onOpenChange={open => { if (!open) setCollectionRunResults(null); }}>
+        <Dialog.Content style={{ maxWidth: '480px' }}>
+          <Dialog.Title>Run results — {collectionRunResults?.collectionName}</Dialog.Title>
+          <ScrollArea style={{ maxHeight: '400px', marginTop: '8px' }}>
+            {collectionRunResults?.results.map((r, i) => {
+              const statusFirst = String(r.response?.statusCode ?? 0).slice(0, 1);
+              const color = statusFirst === '2' ? 'green' : statusFirst === '3' ? 'blue' : statusFirst === '4' || statusFirst === '5' ? 'red' : 'gray';
+              const durationMs = r.response?.duration ? Math.round(r.response.duration / 1000) : 0;
+              return (
+                <Flex key={i} justify="between" align="center" px="2" py="2"
+                  style={{ borderBottom: '1px solid var(--gray-a3)' }}>
+                  <Text size="2" style={{ fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.name || r.filePath.split('/').pop()?.replace('.postier', '')}
+                  </Text>
+                  <Flex gap="2" align="center" style={{ flexShrink: 0 }}>
+                    <Badge color={color as any}>{r.response?.status || 'Error'}</Badge>
+                    <Text size="1" color="gray">{durationMs} ms</Text>
+                  </Flex>
+                </Flex>
+              );
+            })}
+          </ScrollArea>
+          <Flex justify="end" mt="3">
+            <Dialog.Close>
+              <Button size="2" variant="soft">Close</Button>
+            </Dialog.Close>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     </Flex>
   );
 }

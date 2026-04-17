@@ -110,7 +110,14 @@ export function RequestBodyEditor({
       from: match.from + 3 + pipeIdx + 1,
       options: allPaths
         .filter(p => p.startsWith(partialPath))
-        .map(p => ({ label: p, apply: p + '}}' })),
+        .map(p => ({
+          label: p,
+          apply: (view: import('@codemirror/view').EditorView, _completion: import('@codemirror/autocomplete').Completion, from: number, to: number) => {
+            const after = view.state.doc.sliceString(to, to + 2);
+            const insert = after === '}}' ? p : p + '}}';
+            view.dispatch({ changes: { from, to, insert } });
+          },
+        })),
     };
   };
 
