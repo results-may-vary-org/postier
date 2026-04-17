@@ -4,13 +4,15 @@ import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, highlightActiveLine, drawSelection, dropCursor, highlightSpecialChars } from "@codemirror/view";
 import { defaultHighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap } from "@codemirror/autocomplete";
+import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap, CompletionSource } from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
 import { xml } from "@codemirror/lang-xml";
 import { useTheme } from "next-themes";
 import { postierLight } from "../codeThemes/light";
 import { postierDark } from "../codeThemes/dark";
 import { BodyType } from "../types/common";
+import { FileEntry, generateJsonPaths } from "../utils/jsonPaths";
+import { LoadPostierRequest } from "../../wailsjs/go/main/App";
 
 /**
  * Props for the RequestBodyEditor component.
@@ -24,6 +26,8 @@ interface RequestBodyEditorProps {
   bodyType: BodyType;
   /** Height of the editor container (default: "200px") */
   height?: string;
+  /** Collection files available for {{@filename|path}} chain-ref autocomplete */
+  collectionFiles?: FileEntry[];
 }
 
 /**
@@ -55,6 +59,7 @@ export function RequestBodyEditor({
   onChange,
   bodyType,
   height = '200px',
+  collectionFiles,
 }: RequestBodyEditorProps) {
   const { resolvedTheme } = useTheme();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -64,6 +69,50 @@ export function RequestBodyEditor({
   const themeConfigRef = useRef(new Compartment());
   const langConfigRef = useRef(new Compartment());
   const editableConfigRef = useRef(new Compartment());
+  const completionConfigRef = useRef(new Compartment());
+
+  // Keep a ref to collectionFiles so the async completion source always sees the latest value
+  const collectionFilesRef = useRef<FileEntry[] | undefined>(collectionFiles);
+  useEffect(() => { collectionFilesRef.current = collectionFiles; }, [collectionFiles]);
+
+  const buildCompletionSource = (): CompletionSource => async (ctx) => {
+    const match = ctx.matchBefore(/\{\{@[^}]*/);
+    if (!match || (match.from === match.to && !ctx.explicit)) return null;
+
+    const typedAfterTrigger = match.text.slice(3); // strip "{{@"
+    const pipeIdx = typedAfterTrigger.indexOf('|');
+    const files = collectionFilesRef.current ?? [];
+
+    if (pipeIdx < 0) {
+      return {
+        from: match.from + 3,
+        options: files
+          .filter(f => f.name.toLowerCase().startsWith(typedAfterTrigger.toLowerCase()))
+          .map(f => ({ label: f.name, apply: f.name + '|' })),
+      };
+    }
+
+    const targetFilename = typedAfterTrigger.slice(0, pipeIdx);
+    const partialPath = typedAfterTrigger.slice(pipeIdx + 1);
+    const matchingFile = files.find(f => f.name === targetFilename);
+    if (!matchingFile) return null;
+
+    const saved = await LoadPostierRequest(matchingFile.path);
+    const allPaths: string[] = ['status'];
+    Object.keys(saved.response?.headers ?? {}).forEach(h => {
+      allPaths.push(`headers.${h}[0]`);
+    });
+    if (saved.response?.body) {
+      try { allPaths.push(...generateJsonPaths(JSON.parse(saved.response.body))); } catch { /* not JSON */ }
+    }
+
+    return {
+      from: match.from + 3 + pipeIdx + 1,
+      options: allPaths
+        .filter(p => p.startsWith(partialPath))
+        .map(p => ({ label: p, apply: p + '}}' })),
+    };
+  };
 
   // Create the editor once on mount; destroy on unmount
   useLayoutEffect(() => {
@@ -89,12 +138,12 @@ export function RequestBodyEditor({
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         bracketMatching(),
         closeBrackets(),
-        autocompletion(),
         highlightActiveLine(),
         EditorView.lineWrapping,
         themeConfigRef.current.of([initialTheme]),
         langConfigRef.current.of(getLanguageExtension(bodyType)),
         editableConfigRef.current.of(EditorView.editable.of(bodyType !== 'none')),
+        completionConfigRef.current.of(autocompletion({ override: [buildCompletionSource()] })),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChange(update.state.doc.toString());
