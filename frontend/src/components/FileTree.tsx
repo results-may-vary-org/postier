@@ -44,7 +44,7 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
     setShowAutoSaveModal,
   } = useCollectionStore();
 
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; hasChildren: boolean } | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; name: string; isDir: boolean; hasChildren: boolean } | null>(null);
   const [closeConfirmation, setCloseConfirmation] = useState<{ collectionId: string; collectionName: string } | null>(null);
   const [duplicateCollectionPath, setDuplicateCollectionPath] = useState<string | null>(null);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
@@ -428,44 +428,32 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
     }
   };
 
-  /** Delete a file or folder node, prompting for confirmation when it has children */
-  const deleteNode = async (path: string) => {
+  /** Delete a file or folder node — always asks for confirmation first */
+  const deleteNode = (path: string) => {
     const ownerCollection = collections.find(c => path.startsWith(c.path));
-    if (ownerCollection) {
-      setSelectedCollection(ownerCollection.id);
-    }
+    if (ownerCollection) setSelectedCollection(ownerCollection.id);
 
-    const node = collections.flatMap(c => getAllNodes(c.tree))
-      .find(n => n.entry.path === path);
-
+    const node = collections.flatMap(c => getAllNodes(c.tree)).find(n => n.entry.path === path);
     if (!node) return;
 
-    const hasChildren = node.children && node.children.length > 0;
-
-    if (hasChildren) {
-      setDeleteConfirmation({ path, hasChildren: true });
-      return;
-    }
-
-    try {
-      if (node.entry.isDir) {
-        await DeleteDirectory(path);
-      } else {
-        await DeleteFile(path);
-      }
-      await refreshCollections();
-    } catch (error) {
-      console.error('Failed to delete:', error);
-      setErrorDialog({ title: 'Failed to Delete', message: String(error) });
-    }
+    setDeleteConfirmation({
+      path,
+      name: node.entry.name,
+      isDir: node.entry.isDir,
+      hasChildren: (node.children?.length ?? 0) > 0,
+    });
   };
 
-  /** Confirm and execute recursive deletion of a directory */
+  /** Confirm and execute deletion after the user approves */
   const confirmDelete = async () => {
     if (!deleteConfirmation) return;
 
     try {
-      await DeleteDirectory(deleteConfirmation.path);
+      if (deleteConfirmation.isDir) {
+        await DeleteDirectory(deleteConfirmation.path);
+      } else {
+        await DeleteFile(deleteConfirmation.path);
+      }
       await refreshCollections();
       setDeleteConfirmation(null);
     } catch (error) {
@@ -746,8 +734,12 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
       <ConfirmAlert
         isOpen={!!deleteConfirmation}
         onClose={() => setDeleteConfirmation(null)}
-        title="Delete Folder"
-        description="This folder contains files or subfolders. Are you sure you want to delete it and all its contents? This action cannot be undone."
+        title={`Delete ${deleteConfirmation?.isDir ? 'Folder' : 'Request'}`}
+        description={
+          deleteConfirmation?.hasChildren
+            ? `"${deleteConfirmation.name}" contains files or subfolders. Deleting it will permanently remove all contents. This cannot be undone.`
+            : `Are you sure you want to permanently delete "${deleteConfirmation?.name.replace('.postier', '')}"? This cannot be undone.`
+        }
         onConfirm={confirmDelete}
         confirmLabel="Delete"
         confirmColor="red"

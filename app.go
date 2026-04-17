@@ -33,6 +33,127 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if dir, err := a.GetThemesDir(); err == nil {
+		seedThemesDir(dir)
+	}
+}
+
+// seedThemesDir writes two example theme files when the themes directory
+// contains no JSON files, giving users a starting point for customisation.
+func seedThemesDir(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			return // already populated
+		}
+	}
+
+	// ── Agrume ───────────────────────────────────────────────────────────────
+	// Complete light theme: warm citrus palette, no white — everything amber/honey tinted.
+	// Gray scale goes from warm honey cream (step 1) to deep espresso brown (step 12).
+	agrume := UserTheme{
+		Name:       "Agrume",
+		Appearance: "light",
+		Vars: map[string]string{
+			// Page & surfaces — soft warm cream, closer to white but still citrus-kissed
+			"--color-background":        "#fdf8f0",
+			"--color-surface":           "#f8eccc", // recessed inputs, amber tint becomes visible
+			"--color-panel-solid":       "#fffcf7", // panels float just above bg
+			"--color-panel-translucent": "#fffcf7",
+			"--color-overlay":           "rgba(120,70,10,0.3)",
+
+			// Gray scale — warm amber progression, lightest → darkest
+			"--gray-1":  "#fffcf7", // barely-there warm tint — almost white
+			"--gray-2":  "#fdf8f0", // soft warm cream (= background)
+			"--gray-3":  "#f8eccc", // amber tint becomes noticeable
+			"--gray-4":  "#f0cc78", // golden amber
+			"--gray-5":  "#e0b250", // medium amber
+			"--gray-6":  "#c89030", // warm orange-amber
+			"--gray-7":  "#a87020", // burnt amber
+			"--gray-8":  "#8a5418", // bronze brown
+			"--gray-9":  "#6e3e10", // dark bronze
+			"--gray-10": "#522e0c", // deep brown
+			"--gray-11": "#3a2008", // espresso
+			"--gray-12": "#241408", // near-black espresso
+			"--gray-surface":   "#f8dfa0",
+			"--gray-indicator": "#8a5418",
+			"--gray-track":     "#8a5418",
+			"--gray-contrast":  "#241408",
+
+			// Alpha scale for gray — rgba of step 8 bronze at varying opacities
+			"--gray-a1":  "rgba(138,84,24,0.04)",
+			"--gray-a2":  "rgba(138,84,24,0.07)",
+			"--gray-a3":  "rgba(138,84,24,0.12)",
+			"--gray-a4":  "rgba(138,84,24,0.17)",
+			"--gray-a5":  "rgba(138,84,24,0.22)",
+			"--gray-a6":  "rgba(138,84,24,0.30)",
+			"--gray-a7":  "rgba(138,84,24,0.44)",
+			"--gray-a8":  "rgba(138,84,24,0.60)",
+			"--gray-a9":  "#6e3e10",
+			"--gray-a10": "#522e0c",
+			"--gray-a11": "#3a2008",
+			"--gray-a12": "#241408",
+
+			// Accent scale — vivid citrus orange (#e85a10 at step 9)
+			"--accent-1":  "#fff4ec",
+			"--accent-2":  "#ffe8d4",
+			"--accent-3":  "#ffd4b0",
+			"--accent-4":  "#ffbc88",
+			"--accent-5":  "#f9a060",
+			"--accent-6":  "#f07838",
+			"--accent-7":  "#e05c1e",
+			"--accent-8":  "#c84810",
+			"--accent-9":  "#e85a10", // vivid citrus — the brand color
+			"--accent-10": "#d04a08",
+			"--accent-11": "#a83808",
+			"--accent-12": "#5c1c00",
+			"--accent-surface":   "#ffe8d4",
+			"--accent-indicator": "#e85a10",
+			"--accent-track":     "#e85a10",
+			"--accent-contrast":  "#ffffff",
+
+			// Alpha scale for accent — rgba of citrus orange at varying opacities
+			"--accent-a1":  "rgba(232,90,16,0.04)",
+			"--accent-a2":  "rgba(232,90,16,0.07)",
+			"--accent-a3":  "rgba(232,90,16,0.12)",
+			"--accent-a4":  "rgba(232,90,16,0.17)",
+			"--accent-a5":  "rgba(232,90,16,0.22)",
+			"--accent-a6":  "rgba(232,90,16,0.30)",
+			"--accent-a7":  "rgba(232,90,16,0.44)",
+			"--accent-a8":  "rgba(232,90,16,0.60)",
+			"--accent-a9":  "#e85a10",
+			"--accent-a10": "#d04a08",
+			"--accent-a11": "#a83808",
+			"--accent-a12": "#5c1c00",
+		},
+	}
+
+	// ── Neovim Dark ──────────────────────────────────────────────────────────
+	// Simple dark theme inspired by the Neovim website palette.
+	// The generator derives the full scale from these three seed colors.
+	neovimDark := UserTheme{
+		Name:       "Neovim Dark",
+		Appearance: "dark",
+		Accent:     "#61ff00", // lime green — Neovim's brand highlight
+		Background: "#0b151b", // dark teal-black — accent-bg-color
+		Gray:       "#5a8a9a", // mid teal — drives the teal-dark gray scale
+	}
+
+	writeThemeFile(dir, "agrume.json", agrume)
+	writeThemeFile(dir, "neovim-dark.json", neovimDark)
+}
+
+// writeThemeFile serialises a UserTheme as indented JSON into dir/filename.
+// Errors are silently ignored — example seeding is best-effort.
+func writeThemeFile(dir, filename string, theme UserTheme) {
+	data, err := json.MarshalIndent(theme, "", "  ")
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(filepath.Join(dir, filename), data, 0644)
 }
 
 // HTTPRequest represents an HTTP request to be made
@@ -432,12 +553,17 @@ func (a *App) RenameEntry(oldPath string, newPath string) error {
 }
 
 // UserTheme represents a theme loaded from the user's themes directory.
+// Either the simple seed fields (Accent + Background + Gray) or the Vars map
+// must be present; files that satisfy neither are silently skipped.
 type UserTheme struct {
-	Name       string `json:"name"`
-	Appearance string `json:"appearance"` // "light" | "dark"
-	Accent     string `json:"accent"`
-	Background string `json:"background"`
-	Gray       string `json:"gray"`
+	Name       string            `json:"name"`
+	Appearance string            `json:"appearance"` // "light" | "dark"
+	// Simple theme: three seed hex colors; the app generates the full scale.
+	Accent     string            `json:"accent,omitempty"`
+	Background string            `json:"background,omitempty"`
+	Gray       string            `json:"gray,omitempty"`
+	// Complete theme: full map of Radix CSS variable overrides, applied verbatim.
+	Vars       map[string]string `json:"vars,omitempty"`
 }
 
 // GetThemesDir returns the path to the user themes directory, creating it if absent.
@@ -481,6 +607,11 @@ func (a *App) LoadUserThemes() ([]UserTheme, error) {
 			continue
 		}
 		if t.Name == "" || (t.Appearance != "light" && t.Appearance != "dark") {
+			continue
+		}
+		hasSimple := t.Accent != "" && t.Background != "" && t.Gray != ""
+		hasComplete := len(t.Vars) > 0
+		if !hasSimple && !hasComplete {
 			continue
 		}
 		themes = append(themes, t)
