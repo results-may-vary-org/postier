@@ -11,7 +11,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +22,8 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+var chainRefRe = regexp.MustCompile(`\{\{@([^|{}\s]+)\|([^{}\s]+)\}\}`)
 
 // App struct
 type App struct {
@@ -249,6 +253,140 @@ func interpolate(s string, vars map[string]string) string {
 	return s
 }
 
+// resolveResponseRefs replaces every {{@filename|path}} placeholder in rawString
+// with the matching value extracted from the named .postier file's saved response.
+// collectionPath is the collection root used to search for the file.
+func (a *App) resolveResponseRefs(rawString, collectionPath string) string {
+	return chainRefRe.ReplaceAllStringFunc(rawString, func(fullMatch string) string {
+		matches := chainRefRe.FindStringSubmatch(fullMatch)
+		if len(matches) != 3 {
+			return fullMatch
+		}
+		targetFilename, extractionPath := matches[1], matches[2]
+
+		var foundFilePath string
+		_ = filepath.Walk(collectionPath, func(filePath string, fileInfo os.FileInfo, walkErr error) error {
+			if walkErr != nil || fileInfo.IsDir() {
+				return nil
+			}
+			if strings.HasSuffix(fileInfo.Name(), ".postier") &&
+				strings.TrimSuffix(fileInfo.Name(), ".postier") == targetFilename {
+				foundFilePath = filePath
+				return filepath.SkipAll
+			}
+			return nil
+		})
+		if foundFilePath == "" {
+			return fullMatch
+		}
+
+		savedRequest, loadErr := a.LoadPostierRequest(foundFilePath)
+		if loadErr != nil || savedRequest.Response == nil {
+			return fullMatch
+		}
+
+		extractedValue := extractChainedValue(&savedRequest, extractionPath)
+		if extractedValue == "" {
+			return fullMatch
+		}
+		return extractedValue
+	})
+}
+
+// extractChainedValue resolves a path like "body.data.token", "status", or "headers.X-Auth[0]"
+// against a saved PostierRequest.
+func extractChainedValue(savedRequest *PostierRequest, extractionPath string) string {
+	pathParts := strings.SplitN(extractionPath, ".", 2)
+	switch pathParts[0] {
+	case "status":
+		return strconv.Itoa(savedRequest.Response.StatusCode)
+	case "headers":
+		if len(pathParts) < 2 {
+			return ""
+		}
+		headerName, arrayIndex := parseChainSegment(pathParts[1])
+		headerValues := savedRequest.Response.Headers[headerName]
+		if len(headerValues) == 0 {
+			return ""
+		}
+		if arrayIndex >= 0 && arrayIndex < len(headerValues) {
+			return headerValues[arrayIndex]
+		}
+		return headerValues[0]
+	case "body":
+		if savedRequest.Response.Body == "" {
+			return ""
+		}
+		var parsedBody interface{}
+		if parseErr := json.Unmarshal([]byte(savedRequest.Response.Body), &parsedBody); parseErr != nil {
+			return ""
+		}
+		if len(pathParts) < 2 {
+			return fmt.Sprintf("%v", parsedBody)
+		}
+		extractedNode := walkChainJSON(parsedBody, pathParts[1])
+		if extractedNode == nil {
+			return ""
+		}
+		return fmt.Sprintf("%v", extractedNode)
+	}
+	return ""
+}
+
+// walkChainJSON traverses a decoded JSON value following remainingPath (dot/bracket notation).
+func walkChainJSON(currentNode interface{}, remainingPath string) interface{} {
+	if remainingPath == "" {
+		return currentNode
+	}
+	dotIndex := strings.IndexByte(remainingPath, '.')
+	var currentSegment, nextPath string
+	if dotIndex >= 0 {
+		currentSegment, nextPath = remainingPath[:dotIndex], remainingPath[dotIndex+1:]
+	} else {
+		currentSegment, nextPath = remainingPath, ""
+	}
+	segmentKey, arrayIndex := parseChainSegment(currentSegment)
+	switch typedNode := currentNode.(type) {
+	case map[string]interface{}:
+		childNode, exists := typedNode[segmentKey]
+		if !exists {
+			return nil
+		}
+		if arrayIndex >= 0 {
+			arrayNode, isArray := childNode.([]interface{})
+			if !isArray || arrayIndex >= len(arrayNode) {
+				return nil
+			}
+			return walkChainJSON(arrayNode[arrayIndex], nextPath)
+		}
+		return walkChainJSON(childNode, nextPath)
+	case []interface{}:
+		if arrayIndex < 0 || arrayIndex >= len(typedNode) {
+			return nil
+		}
+		return walkChainJSON(typedNode[arrayIndex], nextPath)
+	}
+	return nil
+}
+
+// parseChainSegment splits "items[2]" → ("items", 2); plain "key" → ("key", -1).
+func parseChainSegment(segment string) (string, int) {
+	openBracket := strings.IndexByte(segment, '[')
+	if openBracket < 0 {
+		return segment, -1
+	}
+	keyPart := segment[:openBracket]
+	closeBracket := strings.IndexByte(segment[openBracket:], ']')
+	if closeBracket < 0 {
+		return keyPart, -1
+	}
+	arrayIndex, parseErr := strconv.Atoi(segment[openBracket+1 : openBracket+closeBracket])
+	if parseErr != nil {
+		return keyPart, -1
+	}
+	return keyPart, arrayIndex
+}
+
 // ReadEnvFile reads the .postier.env file from collectionPath and returns the key-value pairs.
 // Returns an empty map (not an error) when the file does not exist.
 func (a *App) ReadEnvFile(collectionPath string) (map[string]string, error) {
@@ -319,6 +457,18 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 		URL:     rawURL,
 		Headers: rawHeaders,
 		Body:    rawBody,
+	}
+
+	// ── Resolve response chain references {{@filename|path}} ─────────────────
+	if req.EnvFilePath != "" {
+		req.URL = a.resolveResponseRefs(req.URL, req.EnvFilePath)
+		req.Body = a.resolveResponseRefs(req.Body, req.EnvFilePath)
+		for headerKey, headerValue := range req.Headers {
+			req.Headers[headerKey] = a.resolveResponseRefs(headerValue, req.EnvFilePath)
+		}
+		for queryKey, queryValue := range req.Query {
+			req.Query[queryKey] = a.resolveResponseRefs(queryValue, req.EnvFilePath)
+		}
 	}
 
 	// ── Environment variable interpolation ───────────────────────────────────

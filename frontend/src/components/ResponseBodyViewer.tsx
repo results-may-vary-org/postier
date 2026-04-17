@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef, useEffect, useState } from "react";
-import { Box, Flex, Button } from "@radix-ui/themes";
+import { Box, Flex, Button, ScrollArea, Text } from "@radix-ui/themes";
+import { CheckIcon, CopyIcon } from "@radix-ui/react-icons";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, drawSelection, highlightSpecialChars } from "@codemirror/view";
 import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -9,6 +10,7 @@ import { json } from "@codemirror/lang-json";
 import { useTheme } from "next-themes";
 import { postierLight } from "../codeThemes/light";
 import { postierDark } from "../codeThemes/dark";
+import { generateJsonPaths } from "../utils/jsonPaths";
 
 /**
  * Props for the ResponseBodyViewer component.
@@ -20,6 +22,8 @@ interface ResponseBodyViewerProps {
   headers: Record<string, string[]> | null;
   /** Optional ref forwarded to the outer container for height management */
   viewerRef?: React.Ref<HTMLDivElement>;
+  /** Path of the currently open .postier file — used for copy-as-reference */
+  currentFilePath?: string;
 }
 
 /**
@@ -45,7 +49,7 @@ function getDisplayContent(body: string, mode: 'raw' | 'json'): string {
  * Automatically detects JSON content type from headers and offers a raw/JSON toggle.
  * Supports theme switching (light/dark) and text search.
  */
-export function ResponseBodyViewer({ body, headers, viewerRef }: ResponseBodyViewerProps) {
+export function ResponseBodyViewer({ body, headers, viewerRef, currentFilePath }: ResponseBodyViewerProps) {
   const { resolvedTheme } = useTheme();
   const editorRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -161,6 +165,60 @@ export function ResponseBodyViewer({ body, headers, viewerRef }: ResponseBodyVie
       >
         <div ref={editorRef} style={{ flex: 1, overflowY: 'auto' }} />
       </Box>
+      <JsonPathExplorer responseBody={body} currentFilePath={currentFilePath} />
     </Box>
   );
+}
+
+// ── JsonPathExplorer ──────────────────────────────────────────────────────────
+
+interface JsonPathExplorerProps {
+    responseBody: string;
+    currentFilePath?: string;
+}
+
+function JsonPathExplorer({ responseBody, currentFilePath }: JsonPathExplorerProps) {
+    const [explorerIsOpen, setExplorerIsOpen] = useState(false);
+    const [recentlyCopiedPath, setRecentlyCopiedPath] = useState<string | null>(null);
+
+    let parsedResponseBody: unknown = null;
+    try { parsedResponseBody = JSON.parse(responseBody); } catch { return null; }
+
+    const currentFileName = currentFilePath
+        ? currentFilePath.split('/').pop()?.replace('.postier', '') ?? ''
+        : '';
+
+    const availablePaths = generateJsonPaths(parsedResponseBody);
+
+    const copyPathAsReference = (jsonPath: string) => {
+        const variableReference = currentFileName
+            ? `{{@${currentFileName}|${jsonPath}}}`
+            : jsonPath;
+        navigator.clipboard.writeText(variableReference);
+        setRecentlyCopiedPath(jsonPath);
+        setTimeout(() => setRecentlyCopiedPath(null), 1500);
+    };
+
+    return (
+        <Box>
+            <Button size="1" variant="ghost" onClick={() => setExplorerIsOpen(isOpen => !isOpen)} mt="1">
+                {explorerIsOpen ? 'Hide paths' : 'Explore paths'}
+            </Button>
+            {explorerIsOpen && (
+                <ScrollArea style={{ maxHeight: '160px', marginTop: '4px' }}>
+                    {availablePaths.map(jsonPath => (
+                        <Flex key={jsonPath} justify="between" align="center" px="2" py="1"
+                              style={{ borderBottom: '1px solid var(--gray-a3)' }}>
+                            <Text size="1" style={{ fontFamily: 'monospace', color: 'var(--gray-11)' }}>
+                                {jsonPath}
+                            </Text>
+                            <Button size="1" variant="ghost" onClick={() => copyPathAsReference(jsonPath)}>
+                                {recentlyCopiedPath === jsonPath ? <CheckIcon /> : <CopyIcon />}
+                            </Button>
+                        </Flex>
+                    ))}
+                </ScrollArea>
+            )}
+        </Box>
+    );
 }

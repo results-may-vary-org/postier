@@ -1,4 +1,4 @@
-import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect} from "react";
+import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect, useMemo} from "react";
 import { MakeRequest, LoadPostierRequest, SavePostierRequest } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon, CopyIcon, CheckIcon } from "@radix-ui/react-icons";
@@ -25,6 +25,8 @@ import { InfoAlert } from "./Alert";
 import { RequestBodyEditor } from "./RequestBodyEditor";
 import { ResponseBodyViewer } from "./ResponseBodyViewer";
 import { toHTTP, toCurl, toWget, toHTTPie } from "../utils/requestFormatters";
+import { FileEntry } from "../utils/jsonPaths";
+import { InterpolationField } from "./InterpolationField";
 
 const VALID_BODY_TYPES: BodyType[] = ['json', 'text', 'none', 'xml', 'sparql'];
 
@@ -38,6 +40,22 @@ interface HttpClientProps {
 
 export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps) {
   const { collections, selectedCollection, currentFilePath, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
+
+  const collectionFiles = useMemo<FileEntry[]>(() => {
+    const fileList: FileEntry[] = [];
+    const walkTree = (treeNode: main.DirectoryTree) => {
+      if (!treeNode.entry.isDir && treeNode.entry.path.endsWith('.postier')) {
+        fileList.push({
+          name: treeNode.entry.name.replace('.postier', ''),
+          path: treeNode.entry.path,
+        });
+      }
+      treeNode.children?.forEach(walkTree);
+    };
+    const activeCollection = collections.find((c: any) => c.id === selectedCollection);
+    if (activeCollection?.tree) walkTree(activeCollection.tree);
+    return fileList;
+  }, [collections, selectedCollection]);
 
   const requestSectionRef = useRef<HTMLDivElement>(null);
   const responseTextAreaRef = useRef<HTMLDivElement>(null);
@@ -507,14 +525,12 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
             </Select.Content>
           </Select.Root>
 
-          <Box width="100%">
-            <TextField.Root
-              type="text"
-              placeholder="https://api.openbrewerydb.org/v1/breweries/random"
-              value={url}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
-            />
-          </Box>
+          <InterpolationField
+            value={url}
+            onChange={setUrl}
+            placeholder="https://api.openbrewerydb.org/v1/breweries/random"
+            collectionFiles={collectionFiles}
+          />
 
           <Button
             onClick={sendRequest}
@@ -559,14 +575,12 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
                       onChange={(e: ChangeEvent<HTMLInputElement>) => updateHeader(index, 'key', e.target.value)}
                     />
                   </Box>
-                  <Box width="100%">
-                    <TextField.Root
-                      type="text"
-                      placeholder={`${header.key ?? "Header"} value`}
-                      value={header.value}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => updateHeader(index, 'value', e.target.value)}
-                    />
-                  </Box>
+                  <InterpolationField
+                    value={header.value}
+                    onChange={(v) => updateHeader(index, 'value', v)}
+                    placeholder={`${header.key ?? "Header"} value`}
+                    collectionFiles={collectionFiles}
+                  />
                   <IconButton onClick={() => removeHeader(index)}>
                     <TrashIcon />
                   </IconButton>
@@ -592,14 +606,12 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
                       onChange={(e: ChangeEvent<HTMLInputElement>) => updateQueryParam(index, 'key', e.target.value)}
                     />
                   </Box>
-                  <Box width="100%">
-                    <TextField.Root
-                      type="text"
-                      placeholder={`${param.key ?? "Parameter"} value`}
-                      value={param.value}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => updateQueryParam(index, 'value', e.target.value)}
-                    />
-                  </Box>
+                  <InterpolationField
+                    value={param.value}
+                    onChange={(v) => updateQueryParam(index, 'value', v)}
+                    placeholder={`${param.key ?? "Parameter"} value`}
+                    collectionFiles={collectionFiles}
+                  />
                   <IconButton onClick={() => removeQueryParam(index)}>
                     <TrashIcon />
                   </IconButton>
@@ -626,6 +638,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
               onChange={setBody}
               bodyType={bodyType}
               height="200px"
+              collectionFiles={collectionFiles}
             />
           </Tabs.Content>
         </Tabs.Root>
@@ -653,6 +666,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
                 body={responseBody}
                 headers={response?.headers ?? null}
                 viewerRef={responseTextAreaRef}
+                currentFilePath={currentFilePath}
               />
             </Box>
           </Tabs.Content>
