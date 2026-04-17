@@ -138,6 +138,52 @@ export namespace main {
 	        this.envFilePath = source["envFilePath"];
 	    }
 	}
+	export class TimingPhase {
+	    label: string;
+	    duration: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TimingPhase(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.label = source["label"];
+	        this.duration = source["duration"];
+	    }
+	}
+	export class RequestTrace {
+	    logs: string[];
+	    timings: TimingPhase[];
+	
+	    static createFrom(source: any = {}) {
+	        return new RequestTrace(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.logs = source["logs"];
+	        this.timings = this.convertValues(source["timings"], TimingPhase);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class HTTPResponse {
 	    statusCode: number;
 	    status: string;
@@ -148,6 +194,7 @@ export namespace main {
 	    duration: number;
 	    raw: EffectiveRequest;
 	    effective: EffectiveRequest;
+	    trace: RequestTrace;
 	
 	    static createFrom(source: any = {}) {
 	        return new HTTPResponse(source);
@@ -164,6 +211,7 @@ export namespace main {
 	        this.duration = source["duration"];
 	        this.raw = this.convertValues(source["raw"], EffectiveRequest);
 	        this.effective = this.convertValues(source["effective"], EffectiveRequest);
+	        this.trace = this.convertValues(source["trace"], RequestTrace);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -236,6 +284,8 @@ export namespace main {
 		    return a;
 		}
 	}
+	
+	
 	export class UserTheme {
 	    name: string;
 	    appearance: string;

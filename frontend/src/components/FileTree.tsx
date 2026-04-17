@@ -474,7 +474,7 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
 
   /** Renders the HTTP method as a small coloured monospace label.
    *  Falls back to EnvelopeClosedIcon for empty/unknown methods. */
-  const MethodBadge = ({ method, isActiveFile }: { method: string | undefined; isActiveFile: boolean }) => {
+  const MethodBadge = ({ method }: { method: string | undefined }) => {
     const methodColors: Record<string, string> = {
       GET:     'var(--green-11)',
       POST:    'var(--yellow-11)',
@@ -485,9 +485,7 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
       OPTIONS: 'var(--purple-11)',
     };
 
-    const resolvedColor = isActiveFile
-      ? 'var(--accent-11)'
-      : (method ? (methodColors[method] ?? undefined) : undefined);
+    const resolvedColor = method ? (methodColors[method] ?? undefined) : undefined;
 
     if (!method || resolvedColor === undefined) {
       return (
@@ -534,8 +532,9 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
               style={{
                 paddingLeft: `${depth * 20 + 8}px`,
                 cursor: 'pointer',
-                // borderRadius: '4px',
                 backgroundColor: bgColor,
+                borderTop: `1px solid ${isActiveFile ? 'var(--accent-6)' : 'transparent'}`,
+                borderBottom: `1px solid ${isActiveFile ? 'var(--accent-6)' : 'transparent'}`,
               }}
               className={bgColor ? undefined : "hover:bg-gray-100"}
               onClick={() => {
@@ -554,7 +553,7 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
                   }}
                 />
               ) : (
-                <MethodBadge method={node.entry.method} isActiveFile={isActiveFile} />
+                <MethodBadge method={node.entry.method} />
               )}
 
               <Text

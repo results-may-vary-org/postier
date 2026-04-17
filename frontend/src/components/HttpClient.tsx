@@ -10,7 +10,7 @@ import {
   DataList,
   Flex,
   IconButton,
-  ScrollArea,
+  Popover,
   Section,
   SegmentedControl,
   Select,
@@ -43,6 +43,8 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
   const responseTextAreaRef = useRef<HTMLDivElement>(null);
   const responseHeaderListRef = useRef<HTMLDivElement>(null);
   const responseCookieListRef = useRef<HTMLDivElement>(null);
+  const responseRequestRef = useRef<HTMLDivElement>(null);
+  const responseTimelineRef = useRef<HTMLDivElement>(null);
 
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('');
@@ -307,11 +309,26 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
 
   const generateResponseTime = () => {
     if (!response) return <Badge color="gray">0 ms</Badge>;
+
     const responseTimeInMicro = response.duration ?? 0;
     const responseTimeInMilli = responseTimeInMicro / 1000;
-    if (responseTimeInMilli < 500) return <Badge color="green">{responseTimeInMilli} ms</Badge>;
-    if (responseTimeInMilli >= 500 && responseTimeInMilli < 1000) return <Badge color="orange">{responseTimeInMilli} ms</Badge>;
-    return <Badge color="red">{responseTimeInMilli} ms</Badge>;
+    const hasTrace = response?.trace?.timings?.length;
+
+    let color: "green" | "orange" | "red" = "green";
+    if (responseTimeInMilli < 500) color = "green";
+    else if (responseTimeInMilli >= 500 && responseTimeInMilli < 1000) color = "orange";
+    else color = "red";
+
+    return (
+      <Popover.Root>
+        <Popover.Trigger style={{ cursor: 'pointer' }}>
+          <Badge color={color}>{responseTimeInMilli} ms</Badge>
+        </Popover.Trigger>
+        <Popover.Content size="1" maxWidth="280px">
+          <TimingBreakdown timings={hasTrace ? response.trace.timings : []} />
+        </Popover.Content>
+      </Popover.Root>
+    )
   }
 
   const generateHeadersBadge = () => {
@@ -338,6 +355,8 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
     if (responseTextAreaRef.current) responseTextAreaRef.current.style.height = `${height}px`;
     if (responseCookieListRef.current) responseCookieListRef.current.style.height = `${height}px`;
     if (responseHeaderListRef.current) responseHeaderListRef.current.style.height = `${height}px`;
+    if (responseRequestRef.current) responseRequestRef.current.style.height = `${height}px`;
+    if (responseTimelineRef.current) responseTimelineRef.current.style.height = `${height}px`;
   }, []);
 
   const generateResponseContent = (response: main.HTTPResponse | null): string => {
@@ -625,6 +644,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
             <Tabs.Trigger value="headers">Headers {calculateHeaderLength()}</Tabs.Trigger>
             <Tabs.Trigger value="cookies">Cookies {calculateCookieLength()}</Tabs.Trigger>
             <Tabs.Trigger value="request">Request</Tabs.Trigger>
+            <Tabs.Trigger value="timeline">Timeline</Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="body">
@@ -664,11 +684,23 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
           </Tabs.Content>
 
           <Tabs.Content value="request">
-            <Box pt="2">
+            <Box pt="2" ref={responseRequestRef} overflowY="scroll">
               {!response?.effective?.url ? (
                 <Text color="gray" size="2">Send a request to see it here.</Text>
               ) : (
                 <RequestViewer raw={response.raw} effective={response.effective} />
+              )}
+            </Box>
+          </Tabs.Content>
+
+          <Tabs.Content value="timeline">
+            <Box pt="2" ref={responseTimelineRef} overflowY="scroll">
+              {!response?.trace?.logs?.length ? (
+                <Text color="gray" size="2">Send a request to see the timeline.</Text>
+              ) : (
+                <pre style={{ margin: 0, fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {response.trace.logs.join('\n')}
+                </pre>
               )}
             </Box>
           </Tabs.Content>
@@ -683,6 +715,50 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
       />
 
     </Box>
+  );
+}
+
+// ── TimingBreakdown ───────────────────────────────────────────────────────────
+
+function TimingBreakdown({ timings }: { timings: main.TimingPhase[] }) {
+  const totalPhase = timings.find(t => t.label === 'Total');
+  const total = totalPhase?.duration ?? 1;
+  const phases = timings.filter(t => t.label !== 'Total');
+
+  const phaseColor: Record<string, string> = {
+    'DNS Lookup':      'var(--purple-9)',
+    'TCP Connect':     'var(--blue-9)',
+    'TLS Handshake':   'var(--cyan-9)',
+    'Waiting (TTFB)':  'var(--orange-9)',
+    'Transfer':        'var(--green-9)',
+  };
+
+  return (
+    <Flex direction="column" gap="2">
+      <Text size="1" weight="bold" color="gray">Timing Breakdown</Text>
+      {phases.map((phase) => (
+        <Flex key={phase.label} direction="column" gap="1">
+          <Flex justify="between">
+            <Text size="1">{phase.label}</Text>
+            <Text size="1" color="gray">{phase.duration} ms</Text>
+          </Flex>
+          <Box style={{ height: '4px', background: 'var(--gray-a4)', borderRadius: '2px' }}>
+            <Box style={{
+              height: '100%',
+              width: `${Math.max(2, Math.min(100, (phase.duration / total) * 100))}%`,
+              background: phaseColor[phase.label] ?? 'var(--accent-9)',
+              borderRadius: '2px',
+            }} />
+          </Box>
+        </Flex>
+      ))}
+      <Box style={{ borderTop: '1px solid var(--gray-a4)', paddingTop: '6px' }}>
+        <Flex justify="between">
+          <Text size="1" weight="bold">Total</Text>
+          <Text size="1" weight="bold">{total} ms</Text>
+        </Flex>
+      </Box>
+    </Flex>
   );
 }
 
@@ -729,11 +805,9 @@ function RequestViewer({ raw, effective }: { raw: main.EffectiveRequest; effecti
           </Button>
         </Flex>
       </Flex>
-      <ScrollArea style={{ maxHeight: '300px' }}>
-        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px', fontFamily: 'monospace' }}>
-          {text}
-        </pre>
-      </ScrollArea>
+      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px', fontFamily: 'monospace' }}>
+        {text}
+      </pre>
     </Flex>
   );
 }
