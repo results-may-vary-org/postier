@@ -32,6 +32,8 @@ export function ReadFile(arg1:string):Promise<string>;
 
 export function RenameEntry(arg1:string,arg2:string):Promise<void>;
 
+export function RunCollection(arg1:Array<string>,arg2:string,arg3:boolean):Promise<Array<main.CollectionRunResult>>;
+
 export function SavePostierRequest(arg1:string,arg2:main.PostierRequest):Promise<void>;
 
 export function UpdateFile(arg1:string,arg2:string):Promise<void>;
