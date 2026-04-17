@@ -1,7 +1,7 @@
 import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect} from "react";
 import { MakeRequest, LoadPostierRequest, SavePostierRequest } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
-import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon } from "@radix-ui/react-icons";
+import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon, CopyIcon, CheckIcon } from "@radix-ui/react-icons";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
   Badge,
@@ -10,8 +10,11 @@ import {
   DataList,
   Flex,
   IconButton,
+  ScrollArea,
   Section,
+  SegmentedControl,
   Select,
+  Switch,
   Tabs,
   TextField,
   Text
@@ -21,6 +24,7 @@ import { useCollectionStore } from "../stores/store";
 import { InfoAlert } from "./Alert";
 import { RequestBodyEditor } from "./RequestBodyEditor";
 import { ResponseBodyViewer } from "./ResponseBodyViewer";
+import { toHTTP, toCurl, toWget, toHTTPie } from "../utils/requestFormatters";
 
 const VALID_BODY_TYPES: BodyType[] = ['json', 'text', 'none', 'xml', 'sparql'];
 
@@ -620,6 +624,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
             <Tabs.Trigger value="body">Body</Tabs.Trigger>
             <Tabs.Trigger value="headers">Headers {calculateHeaderLength()}</Tabs.Trigger>
             <Tabs.Trigger value="cookies">Cookies {calculateCookieLength()}</Tabs.Trigger>
+            <Tabs.Trigger value="request">Request</Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="body">
@@ -657,6 +662,16 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
               </DataList.Root>
             </Box>
           </Tabs.Content>
+
+          <Tabs.Content value="request">
+            <Box pt="2">
+              {!response?.effective?.url ? (
+                <Text color="gray" size="2">Send a request to see it here.</Text>
+              ) : (
+                <RequestViewer raw={response.raw} effective={response.effective} />
+              )}
+            </Box>
+          </Tabs.Content>
         </Tabs.Root>
       </Section>
 
@@ -668,5 +683,57 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
       />
 
     </Box>
+  );
+}
+
+// ── RequestViewer ─────────────────────────────────────────────────────────────
+
+type ReqFormat = 'curl' | 'http' | 'wget' | 'httpie';
+
+const formatters: Record<ReqFormat, (r: main.EffectiveRequest) => string> = {
+  curl:   toCurl,
+  http:   toHTTP,
+  wget:   toWget,
+  httpie: toHTTPie,
+};
+
+function RequestViewer({ raw, effective }: { raw: main.EffectiveRequest; effective: main.EffectiveRequest }) {
+  const [format, setFormat]           = useState<ReqFormat>('curl');
+  const [interpolated, setInterpolated] = useState(true);
+  const [copied, setCopied]           = useState(false);
+
+  const req  = interpolated ? effective : raw;
+  const text = formatters[format](req);
+
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <Flex direction="column" gap="2">
+      <Flex justify="between" align="center" wrap="wrap" gap="2">
+        <SegmentedControl.Root size="1" value={format} onValueChange={v => setFormat(v as ReqFormat)}>
+          <SegmentedControl.Item value="curl">cURL</SegmentedControl.Item>
+          <SegmentedControl.Item value="http">HTTP</SegmentedControl.Item>
+          <SegmentedControl.Item value="wget">wget</SegmentedControl.Item>
+          <SegmentedControl.Item value="httpie">HTTPie</SegmentedControl.Item>
+        </SegmentedControl.Root>
+        <Flex align="center" gap="2">
+          <Text size="1" color="gray">Interpolate env</Text>
+          <Switch size="1" checked={interpolated} onCheckedChange={setInterpolated} />
+          <Button size="1" variant="soft" onClick={copy}>
+            {copied ? <CheckIcon /> : <CopyIcon />}
+            {copied ? 'Copied' : 'Copy'}
+          </Button>
+        </Flex>
+      </Flex>
+      <ScrollArea style={{ maxHeight: '300px' }}>
+        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px', fontFamily: 'monospace' }}>
+          {text}
+        </pre>
+      </ScrollArea>
+    </Flex>
   );
 }

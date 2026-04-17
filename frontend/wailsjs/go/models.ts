@@ -54,6 +54,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class EffectiveRequest {
+	    method: string;
+	    url: string;
+	    headers: Record<string, string>;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EffectiveRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.method = source["method"];
+	        this.url = source["url"];
+	        this.headers = source["headers"];
+	        this.body = source["body"];
+	    }
+	}
 	
 	export class HTTPCookie {
 	    name: string;
@@ -128,6 +146,8 @@ export namespace main {
 	    body: string;
 	    size: number;
 	    duration: number;
+	    raw: EffectiveRequest;
+	    effective: EffectiveRequest;
 	
 	    static createFrom(source: any = {}) {
 	        return new HTTPResponse(source);
@@ -142,6 +162,8 @@ export namespace main {
 	        this.body = source["body"];
 	        this.size = source["size"];
 	        this.duration = source["duration"];
+	        this.raw = this.convertValues(source["raw"], EffectiveRequest);
+	        this.effective = this.convertValues(source["effective"], EffectiveRequest);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
