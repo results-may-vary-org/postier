@@ -1,97 +1,317 @@
-import { Badge, Button, Dialog, Flex, ScrollArea, Separator, Text } from "@radix-ui/themes";
+import { useCallback, useEffect, useMemo } from "react";
+import { Button, Dialog, Flex, Separator, Text } from "@radix-ui/themes";
+import {
+    ReactFlow,
+    Background,
+    BackgroundVariant,
+    Controls,
+    useNodesState,
+    useEdgesState,
+    type Node,
+    type Edge,
+} from "@xyflow/react";
+import dagre from "@dagrejs/dagre";
+import "@xyflow/react/dist/style.css";
 import { main } from "../../wailsjs/go/models";
+import { CollectionRunNode, type CollectionRunNodeData, type CollectionRunNodeType } from "./CollectionRunNode";
+
+// nodeTypes must live outside the component — React Flow re-registers on every render otherwise
+const NODE_TYPES = { requestCard: CollectionRunNode };
+
+const NODE_WIDTH  = 220;
+const NODE_HEIGHT = 120; // conservative estimate used by dagre for spacing
+
+/** Distinct colors assigned to independent dependency chains. */
+const CHAIN_COLORS = [
+    "var(--blue-8)",
+    "var(--green-8)",
+    "var(--orange-8)",
+    "var(--purple-8)",
+    "var(--pink-8)",
+    "var(--cyan-8)",
+];
+
+// ── Dagre layout ──────────────────────────────────────────────────────────────
+
+/**
+ * Compute node positions with dagre (left-to-right ranking by dependency depth).
+ * Assigns a distinct color to each independent connected component so chains
+ * are immediately distinguishable at a glance.
+ */
+function buildLayoutedGraph(
+    order: main.DependencyNode[],
+): { nodes: Node<CollectionRunNodeData>[]; edges: Edge[] } {
+    // Build displayID → filePath so we can resolve DependsOn labels to node IDs
+    const displayToPath = new Map<string, string>();
+    for (const depNode of order) {
+        const label = depNode.parentDir
+            ? `${depNode.parentDir}/${depNode.name}`
+            : depNode.name;
+        displayToPath.set(label, depNode.filePath);
+        displayToPath.set(depNode.name, depNode.filePath); // bare-name fallback
+    }
+
+    const graph = new dagre.graphlib.Graph();
+    graph.setDefaultEdgeLabel(() => ({}));
+    graph.setGraph({ rankdir: "LR", ranksep: 80, nodesep: 24 });
+
+    // Register nodes and collect raw edge pairs with dagre
+    const rawEdges: { source: string; target: string }[] = [];
+    for (const depNode of order) {
+        graph.setNode(depNode.filePath, { width: NODE_WIDTH, height: NODE_HEIGHT });
+
+        for (const depLabel of (depNode.dependsOn ?? [])) {
+            const depPath = displayToPath.get(depLabel);
+            if (!depPath) continue;
+            graph.setEdge(depPath, depNode.filePath);
+            rawEdges.push({ source: depPath, target: depNode.filePath });
+        }
+    }
+
+    dagre.layout(graph);
+
+    // ── Connected-component coloring ──────────────────────────────────────────
+    // Build undirected adjacency so we can group nodes into independent chains.
+    const adj = new Map<string, Set<string>>();
+    for (const { source, target } of rawEdges) {
+        if (!adj.has(source)) adj.set(source, new Set());
+        if (!adj.has(target)) adj.set(target, new Set());
+        adj.get(source)!.add(target);
+        adj.get(target)!.add(source);
+    }
+
+    const componentByPath = new Map<string, number>();
+    let componentCount = 0;
+    for (const depNode of order) {
+        if (componentByPath.has(depNode.filePath)) continue;
+        const queue = [depNode.filePath];
+        while (queue.length) {
+            const current = queue.shift()!;
+            if (componentByPath.has(current)) continue;
+            componentByPath.set(current, componentCount);
+            for (const neighbor of (adj.get(current) ?? [])) {
+                if (!componentByPath.has(neighbor)) queue.push(neighbor);
+            }
+        }
+        componentCount++;
+    }
+
+    // Only color when there are actual edges (isolated nodes stay uncolored).
+    const hasEdges = rawEdges.length > 0;
+    const chainColorByPath = new Map<string, string>();
+    if (hasEdges) {
+        for (const [path, idx] of componentByPath) {
+            // Only color nodes that are part of a connected edge (have neighbors).
+            if (adj.has(path)) {
+                chainColorByPath.set(path, CHAIN_COLORS[idx % CHAIN_COLORS.length]);
+            }
+        }
+    }
+
+    // Build React Flow edges with chain color applied.
+    const edges: Edge[] = rawEdges.map(({ source, target }) => {
+        const color = chainColorByPath.get(source) ?? "var(--gray-8)";
+        return {
+            id: `${source}->${target}`,
+            source,
+            target,
+            type: "smoothstep",
+            animated: false, // toggled via useEffect while running
+            style: { stroke: color, strokeWidth: 1.5 },
+            // Keep the color for animated toggling
+            data: { chainColor: color },
+        };
+    });
+
+    const nodes: Node<CollectionRunNodeData>[] = order.map(depNode => {
+        const { x, y } = graph.node(depNode.filePath);
+        return {
+            id: depNode.filePath,
+            type: "requestCard" as const,
+            position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 },
+            data: {
+                label: depNode.name,
+                depNode,
+                result: undefined,
+                isRunning: false,
+                chainColor: chainColorByPath.get(depNode.filePath),
+                onCardClick: () => {}, // filled in via useEffect
+                onRerunAll: () => {},  // filled in via useEffect
+                onRerunOne: () => {},  // filled in via useEffect
+            },
+        };
+    });
+
+    return { nodes, edges };
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
 
 interface CollectionExecutionModalProps {
     collectionName: string;
     analysis: main.DependencyAnalysis;
+    /** null while not yet run; populated after RunCollection completes. */
+    results: main.CollectionRunResult[] | null;
     isRunning: boolean;
     onExecute: (orderedFilePaths: string[]) => void;
     onClose: () => void;
+    /** Navigate to this request in the main editor and close the modal. */
+    onSelectRequest: (filePath: string) => void;
 }
 
 /**
- * Shows the dependency-resolved execution plan before running a collection.
- * The user can review the order and click "Execute All" to start the run.
+ * Single modal covering the full collection-run lifecycle:
+ * plan view → execute → live status → results.
+ * Uses React Flow for the graph canvas and dagre for automatic layout.
  */
-export function CollectionExecutionModal({ collectionName, analysis, isRunning, onExecute, onClose }: CollectionExecutionModalProps) {
-    const handleExecute = () => {
-        onExecute(analysis.order.map(n => n.filePath));
-    };
+export function CollectionExecutionModal({
+    collectionName,
+    analysis,
+    results,
+    isRunning,
+    onExecute,
+    onClose,
+    onSelectRequest,
+}: CollectionExecutionModalProps) {
+    const hasRun = results !== null;
+
+    // Stable click handler — passed into node data via useEffect to avoid re-layout
+    const handleCardClick = useCallback((filePath: string) => {
+        onSelectRequest(filePath);
+        onClose();
+    }, [onSelectRequest, onClose]);
+
+    // Build result lookup
+    const resultByPath = useMemo(() => {
+        const map = new Map<string, main.CollectionRunResult>();
+        results?.forEach(result => map.set(result.filePath, result));
+        return map;
+    }, [results]);
+
+    // Compute layout once per analysis order change
+    const { nodes: initialNodes, edges: initialEdges } = useMemo(
+        () => buildLayoutedGraph(analysis.order),
+        [analysis.order],
+    );
+
+    const [rfNodes, setRfNodes, onNodesChange] = useNodesState<CollectionRunNodeType>(initialNodes as CollectionRunNodeType[]);
+    const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+    const handleRerunAll = useCallback(
+        () => onExecute(analysis.order.map(node => node.filePath)),
+        [onExecute, analysis.order],
+    );
+    const handleRerunOne = useCallback(
+        (filePath: string) => onExecute([filePath]),
+        [onExecute],
+    );
+
+    // Sync dynamic data into nodes without triggering a re-layout
+    useEffect(() => {
+        setRfNodes(nodes =>
+            nodes.map(node => ({
+                ...node,
+                data: {
+                    ...node.data,
+                    result: resultByPath.get(node.id),
+                    isRunning,
+                    onCardClick: handleCardClick,
+                    onRerunAll: handleRerunAll,
+                    onRerunOne: handleRerunOne,
+                },
+            })),
+        );
+    }, [results, isRunning, resultByPath, handleCardClick, handleRerunAll, handleRerunOne, setRfNodes]);
+
+    // Animate edges while running — preserve the per-chain stroke color
+    useEffect(() => {
+        setRfEdges(edges =>
+            edges.map(edge => ({
+                ...edge,
+                animated: isRunning,
+                style: {
+                    ...edge.style,
+                    stroke: (edge.data as { chainColor?: string } | undefined)?.chainColor ?? "var(--gray-8)",
+                    strokeWidth: 1.5,
+                },
+            })),
+        );
+    }, [isRunning, setRfEdges]);
+
+    const handleExecute = () => onExecute(analysis.order.map(node => node.filePath));
 
     return (
         <Dialog.Root open onOpenChange={open => { if (!open && !isRunning) onClose(); }}>
-            <Dialog.Content style={{ maxWidth: 680 }}>
-                <Dialog.Title>Run collection — {collectionName}</Dialog.Title>
-                <Dialog.Description size="2" color="gray">
-                    Execution order · {analysis.order.length} request{analysis.order.length !== 1 ? 's' : ''}
-                </Dialog.Description>
-
-                <Separator size="4" my="3" />
-
-                <ScrollArea style={{ maxHeight: 400 }}>
-                    <Flex direction="column" gap="1" pr="2">
-                        {analysis.order.map((node, i) => (
-                            <Flex
-                                key={node.filePath}
-                                align="center"
-                                gap="3"
-                                px="2"
-                                style={{
-                                    height: 'var(--space-7)',
-                                    borderRadius: 'var(--radius-2)',
-                                    background: i % 2 === 0 ? 'var(--gray-a2)' : 'transparent',
-                                }}
-                            >
-                                {/* Step number */}
-                                <Text
-                                    size="1"
-                                    color="gray"
-                                    style={{ minWidth: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                                >
-                                    {i + 1}
-                                </Text>
-
-                                {/* Request name + optional parent dir for disambiguation */}
-                                <Text
-                                    size="2"
-                                    style={{ fontFamily: 'var(--font-mono)', flex: 1 }}
-                                >
-                                    {node.name}
-                                    {node.parentDir && (
-                                        <Text as="span" size="1" color="gray" ml="2">
-                                            ({node.parentDir})
-                                        </Text>
-                                    )}
-                                </Text>
-
-                                {/* Dependency badges */}
-                                {node.dependsOn && node.dependsOn.length > 0 ? (
-                                    <Flex gap="1" align="center" wrap="wrap" justify="end" style={{ maxWidth: 280 }}>
-                                        <Text size="1" color="gray">←</Text>
-                                        {node.dependsOn.map(dep => (
-                                            <Badge key={dep} size="1" variant="soft" color="gray" radius="full">
-                                                {dep}
-                                            </Badge>
-                                        ))}
-                                    </Flex>
-                                ) : (
-                                    <Text size="1" color="gray" style={{ fontStyle: 'italic' }}>no dependencies</Text>
-                                )}
-                            </Flex>
-                        ))}
+            <Dialog.Content
+                style={{
+                    width: "min(90vw, 1100px)",
+                    maxWidth: "unset",
+                    height: "80vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    padding: "var(--space-4)",
+                    gap: 0,
+                }}
+            >
+                {/* Header */}
+                <Flex justify="between" align="start" mb="2">
+                    <Flex direction="column" gap="1">
+                        <Dialog.Title mb="0">
+                            Run collection — {collectionName}
+                        </Dialog.Title>
+                        <Text size="2" color="gray">
+                            {analysis.order.length} request{analysis.order.length !== 1 ? "s" : ""}
+                            {" · click a card to open · drag to reposition · Space/middle-drag to pan"}
+                        </Text>
                     </Flex>
-                </ScrollArea>
 
-                <Separator size="4" my="3" />
-
-                <Flex gap="3" justify="end">
-                    <Dialog.Close>
-                        <Button variant="soft" color="gray" disabled={isRunning} onClick={onClose}>
-                            Cancel
+                    {!hasRun && (
+                        <Button onClick={handleExecute} loading={isRunning} disabled={isRunning}>
+                            Execute all →
                         </Button>
-                    </Dialog.Close>
-                    <Button variant="solid" loading={isRunning} onClick={handleExecute}>
-                        Execute all →
+                    )}
+                </Flex>
+
+                <Separator size="4" mb="3" />
+
+                {/* React Flow graph — fills the remaining height */}
+                <div style={{ flex: 1, minHeight: 0, borderRadius: "var(--radius-3)", overflow: "hidden" }}>
+                    <ReactFlow
+                        nodes={rfNodes}
+                        edges={rfEdges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        nodeTypes={NODE_TYPES}
+                        fitView
+                        fitViewOptions={{ padding: 0.15 }}
+                        // Clicking a card body opens the request; React Flow won't fire onNodeClick
+                        // after a drag so the distinction is handled automatically.
+                        onNodeClick={(_, node) => handleCardClick(node.id)}
+                        nodesConnectable={false}
+                        elementsSelectable={false}
+                        // Middle-button drag or Space+left-drag pans the viewport;
+                        // plain left-drag is reserved for moving individual cards.
+                        panOnDrag={[1]}
+                        panActivationKeyCode="Space"
+                        proOptions={{ hideAttribution: true }}
+                        style={{ background: "var(--gray-a1)" }}
+                    >
+                        <Background
+                            variant={BackgroundVariant.Dots}
+                            gap={16}
+                            size={1}
+                            color="var(--gray-a6)"
+                        />
+                        <Controls showInteractive={false} />
+                    </ReactFlow>
+                </div>
+
+                <Separator size="4" mt="3" />
+
+                {/* Footer */}
+                <Flex justify="end" mt="3">
+                    <Button variant="soft" color="gray" disabled={isRunning} onClick={onClose}>
+                        {hasRun ? "Close" : "Cancel"}
                     </Button>
                 </Flex>
             </Dialog.Content>

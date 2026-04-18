@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu, Dialog, Badge } from "@radix-ui/themes";
+import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
 import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon, MixerVerticalIcon, ExternalLinkIcon, TriangleRightIcon } from "@radix-ui/react-icons";
-import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry, OpenInFileManager, RunCollection, AnalyzeCollectionDependencies } from "../../wailsjs/go/main/App";
+import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry, OpenInFileManager } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { Collection } from "../types/common";
 import { useCollectionStore } from "../stores/store";
@@ -10,6 +10,7 @@ import { Alert, ConfirmAlert, InfoAlert } from "./Alert";
 import { AutoSaveModal } from "./AutoSaveModal";
 import { EnvEditor } from "./EnvEditor";
 import { CollectionExecutionModal } from "./CollectionExecutionModal";
+import { useCollectionRun } from "../hooks/useCollectionRun";
 
 type DirectoryTree = main.DirectoryTree;
 type FileSystemEntry = main.FileSystemEntry;
@@ -45,11 +46,10 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
     setShowAutoSaveModal,
   } = useCollectionStore();
 
-  const [collectionRunResults, setCollectionRunResults] = useState<{ collectionName: string; results: main.CollectionRunResult[] } | null>(null);
-  const [isRunningCollection, setIsRunningCollection] = useState(false);
-  const [executionPlan, setExecutionPlan] = useState<{ collectionName: string; collectionPath: string; analysis: main.DependencyAnalysis } | null>(null);
-  const [cycleError, setCycleError] = useState<{ collectionName: string; cycleNames: string[] } | null>(null);
-  const [selfRefError, setSelfRefError] = useState<{ collectionName: string; selfRefNames: string[] } | null>(null);
+  const {
+    executionModal, cycleError, selfRefError, isAnalyzing, isRunning,
+    analyzeAndOpen, execute, closeModal, closeCycleError, closeSelfRefError,
+  } = useCollectionRun();
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; name: string; isDir: boolean; hasChildren: boolean } | null>(null);
   const [closeConfirmation, setCloseConfirmation] = useState<{ collectionId: string; collectionName: string } | null>(null);
   const [duplicateCollectionPath, setDuplicateCollectionPath] = useState<string | null>(null);
@@ -478,60 +478,6 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
     return nodes;
   };
 
-  /** Collect all .postier file paths from a tree in display order (depth-first) */
-  const collectFilePaths = (tree: DirectoryTree): string[] => {
-    const paths: string[] = [];
-    const walk = (node: DirectoryTree) => {
-      if (!node.entry.isDir && node.entry.path.endsWith('.postier')) {
-        paths.push(node.entry.path);
-      }
-      node.children?.forEach(walk);
-    };
-    tree.children?.forEach(walk);
-    return paths;
-  };
-
-  /** Analyse dependencies, then either show the execution plan modal or a cycle error. */
-  const handleRunCollection = async (collection: { id: string; name: string; path: string; tree: DirectoryTree }) => {
-    const filePaths = collectFilePaths(collection.tree);
-    if (filePaths.length === 0) return;
-
-    setIsRunningCollection(true);
-    try {
-      const analysis = await AnalyzeCollectionDependencies(filePaths, collection.path);
-      if (analysis.selfRefNames && analysis.selfRefNames.length > 0) {
-        setSelfRefError({ collectionName: collection.name, selfRefNames: analysis.selfRefNames });
-      } else if (analysis.hasCycle) {
-        setCycleError({ collectionName: collection.name, cycleNames: analysis.cycleNames ?? [] });
-      } else {
-        setExecutionPlan({ collectionName: collection.name, collectionPath: collection.path, analysis });
-      }
-    } catch (err) {
-      console.error('Dependency analysis failed:', err);
-    } finally {
-      setIsRunningCollection(false);
-    }
-  };
-
-  /** Execute the pre-sorted file list produced by the execution plan modal. */
-  const handleExecuteCollection = async (orderedFilePaths: string[]) => {
-    if (!executionPlan) return;
-    const { collectionName, collectionPath } = executionPlan;
-    setExecutionPlan(null);
-    setIsRunningCollection(true);
-    try {
-      const results = await RunCollection(orderedFilePaths, collectionPath, autoSave);
-      setCollectionRunResults({ collectionName, results });
-      if (autoSave) {
-        window.dispatchEvent(new CustomEvent('postier-collection-refresh'));
-      }
-    } catch (err) {
-      console.error('Collection run failed:', err);
-    } finally {
-      setIsRunningCollection(false);
-    }
-  };
-
   /** Renders the HTTP method as a small coloured monospace label.
    *  Falls back to EnvelopeClosedIcon for empty/unknown methods. */
   const MethodBadge = ({ method }: { method: string | undefined }) => {
@@ -752,8 +698,8 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
                       size="1"
                       variant="ghost"
                       title="Run all requests in order"
-                      disabled={isRunningCollection}
-                      onClick={() => handleRunCollection(collection)}
+                      disabled={isAnalyzing || isRunning}
+                      onClick={() => analyzeAndOpen(collection)}
                     >
                       <TriangleRightIcon />
                     </IconButton>
@@ -938,21 +884,23 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
         />
       )}
 
-      {/* Execution plan modal — shown before the run starts */}
-      {executionPlan && (
+      {/* Collection execution modal — plan view, live run, and results in one place */}
+      {executionModal && (
         <CollectionExecutionModal
-          collectionName={executionPlan.collectionName}
-          analysis={executionPlan.analysis}
-          isRunning={isRunningCollection}
-          onExecute={handleExecuteCollection}
-          onClose={() => setExecutionPlan(null)}
+          collectionName={executionModal.collectionName}
+          analysis={executionModal.analysis}
+          results={executionModal.results}
+          isRunning={isRunning}
+          onExecute={execute}
+          onClose={closeModal}
+          onSelectRequest={filePath => { setCurrentFile(filePath); closeModal(); }}
         />
       )}
 
       {/* Self-reference error */}
       <InfoAlert
         isOpen={!!selfRefError}
-        onClose={() => setSelfRefError(null)}
+        onClose={closeSelfRefError}
         title="Self-reference detected"
         description={`The following requests reference their own response and cannot run:\n\n${selfRefError?.selfRefNames.join(', ')}\n\nA request cannot use its own response as input — remove the self-reference before running the collection.`}
         okLabel="Close"
@@ -961,42 +909,11 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
       {/* Circular dependency error */}
       <InfoAlert
         isOpen={!!cycleError}
-        onClose={() => setCycleError(null)}
+        onClose={closeCycleError}
         title="Circular dependency detected"
         description={`The following requests reference each other in a cycle and cannot be resolved:\n\n${cycleError?.cycleNames.join(' → ')}\n\nRemove the circular reference before running the collection.`}
         okLabel="Close"
       />
-
-      {/* Collection run results dialog */}
-      <Dialog.Root open={!!collectionRunResults} onOpenChange={open => { if (!open) setCollectionRunResults(null); }}>
-        <Dialog.Content style={{ maxWidth: '480px' }}>
-          <Dialog.Title>Run results — {collectionRunResults?.collectionName}</Dialog.Title>
-          <ScrollArea style={{ maxHeight: '400px', marginTop: '8px' }}>
-            {collectionRunResults?.results.map((r, i) => {
-              const statusFirst = String(r.response?.statusCode ?? 0).slice(0, 1);
-              const color = statusFirst === '2' ? 'green' : statusFirst === '3' ? 'blue' : statusFirst === '4' || statusFirst === '5' ? 'red' : 'gray';
-              const durationMs = r.response?.duration ? Math.round(r.response.duration / 1000) : 0;
-              return (
-                <Flex key={i} justify="between" align="center" px="2" py="2"
-                  style={{ borderBottom: '1px solid var(--gray-a3)' }}>
-                  <Text size="2" style={{ fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.name || r.filePath.split('/').pop()?.replace('.postier', '')}
-                  </Text>
-                  <Flex gap="2" align="center" style={{ flexShrink: 0 }}>
-                    <Badge color={color as any}>{r.response?.status || 'Error'}</Badge>
-                    <Text size="1" color="gray">{durationMs} ms</Text>
-                  </Flex>
-                </Flex>
-              );
-            })}
-          </ScrollArea>
-          <Flex justify="end" mt="3">
-            <Dialog.Close>
-              <Button size="2" variant="soft">Close</Button>
-            </Dialog.Close>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
     </Flex>
   );
 }
