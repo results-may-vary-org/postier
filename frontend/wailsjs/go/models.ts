@@ -310,6 +310,7 @@ export namespace main {
 	    body: string;
 	    query: Record<string, string>;
 	    envFilePath?: string;
+	    followRedirects?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new HTTPRequest(source);
@@ -323,6 +324,7 @@ export namespace main {
 	        this.body = source["body"];
 	        this.query = source["query"];
 	        this.envFilePath = source["envFilePath"];
+	        this.followRedirects = source["followRedirects"];
 	    }
 	}
 	

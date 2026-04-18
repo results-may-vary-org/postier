@@ -1,0 +1,156 @@
+{
+  "name": "GET@api.openbrewerydb.org/v1/breweries/random",
+  "description": "Fetch a random brewery. Its brewery_type is injected into the next request.",
+  "method": "GET",
+  "url": "https://api.openbrewerydb.org/v1/breweries/random",
+  "headers": {},
+  "body": "",
+  "bodyType": "none",
+  "query": {},
+  "response": {
+    "statusCode": 200,
+    "status": "200 OK",
+    "headers": {
+      "Alt-Svc": [
+        "h3=\":443\"; ma=86400"
+      ],
+      "Cache-Control": [
+        "no-cache, private"
+      ],
+      "Cf-Cache-Status": [
+        "DYNAMIC"
+      ],
+      "Cf-Ray": [
+        "9ee6949d89df3c80-CDG"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Date": [
+        "Sat, 18 Apr 2026 20:57:13 GMT"
+      ],
+      "Last-Modified": [
+        "Sat, 18 Apr 2026 20:57:13 GMT"
+      ],
+      "Nel": [
+        "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      ],
+      "Referrer-Policy": [
+        "strict-origin-when-cross-origin"
+      ],
+      "Report-To": [
+        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=HMTAuYqEmDpnVua1cRkVT7NkCnT6IcqsjVGR79lpHNLFQ6ifJo2fbKGCyZQ8q8rR74PuHn%2Fs0EvDiUWoB6I2VvRIDj4prZIvAYyVsngY5mLM0HyfiK1GzEupx%2FFvTOZr0ykEbNg21bHTqi%2FdESr48oaQWf8%3D\"}]}"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Server-Timing": [
+        "cfCacheStatus;desc=\"DYNAMIC\"",
+        "cfEdge;dur=11,cfOrigin;dur=552"
+      ],
+      "Set-Cookie": [
+        "__cf_bm=5Kgs01yM_.4lS97l40jB.K5ia.SlsaVMynQL5qfsXSE-1776545832.5807872-1.0.1.1-tGtxhyQzQ4y0zdzETKbvqnJqNBa9QCF2MLvt4Um2hcEs8Q3YxQ4kzsw5sQgJTlmk8YIWIRMOn.gOaOcFbFHylKPnqLv6RpL7VEtng9kZvg0Shz8EPERvjBWY0nHOWqDP; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Sat, 18 Apr 2026 21:27:13 GMT"
+      ],
+      "Strict-Transport-Security": [
+        "max-age=31536000; includeSubDomains"
+      ],
+      "Vary": [
+        "Accept-Encoding,Origin"
+      ],
+      "X-Content-Type-Options": [
+        "nosniff"
+      ],
+      "X-Do-App-Origin": [
+        "67ba9744-8641-488d-8d6d-ec79fa2d19d8"
+      ],
+      "X-Do-Orig-Status": [
+        "200"
+      ],
+      "X-Frame-Options": [
+        "SAMEORIGIN"
+      ],
+      "X-Ratelimit-Limit": [
+        "120"
+      ],
+      "X-Ratelimit-Remaining": [
+        "90"
+      ]
+    },
+    "cookies": [
+      {
+        "name": "__cf_bm",
+        "value": "5Kgs01yM_.4lS97l40jB.K5ia.SlsaVMynQL5qfsXSE-1776545832.5807872-1.0.1.1-tGtxhyQzQ4y0zdzETKbvqnJqNBa9QCF2MLvt4Um2hcEs8Q3YxQ4kzsw5sQgJTlmk8YIWIRMOn.gOaOcFbFHylKPnqLv6RpL7VEtng9kZvg0Shz8EPERvjBWY0nHOWqDP",
+        "domain": "api.openbrewerydb.org",
+        "path": "/",
+        "expires": "2026-04-18T21:27:13Z",
+        "secure": true,
+        "httpOnly": true
+      }
+    ],
+    "body": "[{\"id\":\"611fcd19-986e-442c-8fbf-0a41aca20a7f\",\"name\":\"Future Primitive Brewing Company - Alki Beach Bar\",\"brewery_type\":\"taproom\",\"address_1\":\"2536 Alki Ave SW\",\"address_2\":null,\"address_3\":null,\"city\":\"Seattle\",\"state_province\":\"Washington\",\"postal_code\":\"98116-3013\",\"country\":\"United States\",\"longitude\":-122.40683073483,\"latitude\":47.580281006304,\"phone\":null,\"website_url\":\"https:\\/\\/www.futureprimitivebeer.com\",\"state\":\"Washington\",\"street\":\"2536 Alki Ave SW\"}]",
+    "size": 468,
+    "duration": 728425,
+    "raw": {
+      "method": "GET",
+      "url": "https://api.openbrewerydb.org/v1/breweries/random",
+      "headers": {},
+      "body": ""
+    },
+    "effective": {
+      "method": "GET",
+      "url": "https://api.openbrewerydb.org/v1/breweries/random",
+      "headers": {},
+      "body": ""
+    },
+    "trace": {
+      "logs": [
+        "[20:57:12.475Z] Preparing request to https://api.openbrewerydb.org/v1/breweries/random",
+        "[20:57:12.475Z] GET https://api.openbrewerydb.org/v1/breweries/random",
+        "[20:57:12.475Z] DNS lookup: api.openbrewerydb.org",
+        "[20:57:12.510Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3121::2",
+        "[20:57:12.510Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3120::2",
+        "[20:57:12.510Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.97.2",
+        "[20:57:12.510Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.96.2",
+        "[20:57:12.510Z] Trying [2a06:98c1:3121::2]:443... (tcp)",
+        "[20:57:12.524Z] Connected to api.openbrewerydb.org ([2a06:98c1:3121::2]:443)",
+        "[20:57:12.524Z] TLS handshake started",
+        "[20:57:12.592Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
+        "[20:57:12.592Z] Server certificate:",
+        "[20:57:12.592Z]   subject: CN=api.openbrewerydb.org",
+        "[20:57:12.592Z]   start date: Mar 20 17:44:40 2026 GMT",
+        "[20:57:12.592Z]   expire date: Jun 18 18:44:34 2026 GMT",
+        "[20:57:12.592Z]   issuer: WE1",
+        "[20:57:13.203Z] HTTP/2.0 200 OK",
+        "[20:57:13.204Z] Request completed in 728 ms"
+      ],
+      "timings": [
+        {
+          "label": "DNS Lookup",
+          "duration": 34
+        },
+        {
+          "label": "TCP Connect",
+          "duration": 13
+        },
+        {
+          "label": "TLS Handshake",
+          "duration": 68
+        },
+        {
+          "label": "Waiting (TTFB)",
+          "duration": 611
+        },
+        {
+          "label": "Transfer",
+          "duration": 0
+        },
+        {
+          "label": "Total",
+          "duration": 728
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-04-18T00:00:00Z",
+  "updatedAt": "2026-04-18T22:57:13.20405477+02:00"
+}

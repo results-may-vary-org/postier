@@ -1,0 +1,159 @@
+{
+  "name": "GET@api.openbrewerydb.org/v1/breweries",
+  "description": "List breweries in the same city as the first search result. Uses {{@search-breweries|body[0].city}} injected into the by_city query param.",
+  "method": "GET",
+  "url": "https://api.openbrewerydb.org/v1/breweries",
+  "headers": {},
+  "body": "",
+  "bodyType": "none",
+  "query": {
+    "by_city": "{{@search-breweries|body[0].city}}",
+    "per_page": "10"
+  },
+  "response": {
+    "statusCode": 200,
+    "status": "200 OK",
+    "headers": {
+      "Alt-Svc": [
+        "h3=\":443\"; ma=86400"
+      ],
+      "Cache-Control": [
+        "etag, max-age=300, public"
+      ],
+      "Cf-Cache-Status": [
+        "BYPASS"
+      ],
+      "Cf-Ray": [
+        "9ee694aa7acd6f4c-CDG"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Date": [
+        "Sat, 18 Apr 2026 20:57:14 GMT"
+      ],
+      "Last-Modified": [
+        "Sat, 18 Apr 2026 20:57:14 GMT"
+      ],
+      "Nel": [
+        "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      ],
+      "Referrer-Policy": [
+        "strict-origin-when-cross-origin"
+      ],
+      "Report-To": [
+        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=wf5A5EEpM8wom2YjEN%2FH%2B5YrJSvA0sVkgyfKFjPI%2BkqgW%2Ffkv0gE2cEztn51qq%2FS2XDC5ttEQoo9yvOmH0cltHgrNzQU%2B8B8Vomyc2CNAPA331LmM8zKfJrZaTGxNRxBGxFONXC1Zl5kO7X%2FqeboQkXElTQ%3D\"}]}"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Server-Timing": [
+        "cfCacheStatus;desc=\"BYPASS\"",
+        "cfEdge;dur=8,cfOrigin;dur=228"
+      ],
+      "Set-Cookie": [
+        "__cf_bm=0v.pEc_sZoaDJJfpWwWOOOOeJHz24aSxcnh7TRuw.V8-1776545834.6424325-1.0.1.1-3fMbcwmAFLV_Osvm1J3Fl4eMT.8s7SdWPLc0LEKQhuH5yYcOO1XLeKrW9_bFVIlp8pFRqIXuNvraJjjq7eQ9stNvhyNSNY9hk3oUbBA1y6RYbmIp.MVmZUF9eX0dMJOD; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Sat, 18 Apr 2026 21:27:14 GMT"
+      ],
+      "Strict-Transport-Security": [
+        "max-age=31536000; includeSubDomains"
+      ],
+      "Vary": [
+        "Accept-Encoding,Origin"
+      ],
+      "X-Content-Type-Options": [
+        "nosniff"
+      ],
+      "X-Do-App-Origin": [
+        "67ba9744-8641-488d-8d6d-ec79fa2d19d8"
+      ],
+      "X-Do-Orig-Status": [
+        "200"
+      ],
+      "X-Frame-Options": [
+        "SAMEORIGIN"
+      ],
+      "X-Ratelimit-Limit": [
+        "120"
+      ],
+      "X-Ratelimit-Remaining": [
+        "87"
+      ]
+    },
+    "cookies": [
+      {
+        "name": "__cf_bm",
+        "value": "0v.pEc_sZoaDJJfpWwWOOOOeJHz24aSxcnh7TRuw.V8-1776545834.6424325-1.0.1.1-3fMbcwmAFLV_Osvm1J3Fl4eMT.8s7SdWPLc0LEKQhuH5yYcOO1XLeKrW9_bFVIlp8pFRqIXuNvraJjjq7eQ9stNvhyNSNY9hk3oUbBA1y6RYbmIp.MVmZUF9eX0dMJOD",
+        "domain": "api.openbrewerydb.org",
+        "path": "/",
+        "expires": "2026-04-18T21:27:14Z",
+        "secure": true,
+        "httpOnly": true
+      }
+    ],
+    "body": "[{\"id\":\"3c9354c5-4d21-40a8-8e53-8f2f9b5e043b\",\"name\":\"3rd Rock Brewing Company\",\"brewery_type\":\"micro\",\"address_1\":\"134 Industrial Park Dr\",\"address_2\":null,\"address_3\":null,\"city\":\"Trenton\",\"state_province\":\"North Carolina\",\"postal_code\":\"28585-9593\",\"country\":\"United States\",\"longitude\":-77.36749285,\"latitude\":35.06939877,\"phone\":\"2526319213\",\"website_url\":\"http:\\/\\/www.3rockbrew.com\",\"state\":\"North Carolina\",\"street\":\"134 Industrial Park Dr\"},{\"id\":\"0f7cb775-114f-4c6f-ad6b-4a3552568d91\",\"name\":\"Bickerson's Brewhouse\",\"brewery_type\":\"micro\",\"address_1\":\"4710 NE 4th St #C105\",\"address_2\":null,\"address_3\":null,\"city\":\"Renton\",\"state_province\":\"Washington\",\"postal_code\":\"98059\",\"country\":\"United States\",\"longitude\":-122.1555405,\"latitude\":47.48904979,\"phone\":\"4254422347\",\"website_url\":\"https:\\/\\/www.bickersonsbrewhouse.com\",\"state\":\"Washington\",\"street\":\"4710 NE 4th St #C105\"},{\"id\":\"78c50e54-34e3-415d-9574-ac0cc0505113\",\"name\":\"Dog \u0026 Pony Alehouse and Grill\",\"brewery_type\":\"closed\",\"address_1\":\"351 Park Ave N\",\"address_2\":null,\"address_3\":null,\"city\":\"Renton\",\"state_province\":\"Washington\",\"postal_code\":\"98057-5716\",\"country\":\"United States\",\"longitude\":-122.2023129,\"latitude\":47.48758261,\"phone\":\"4252548080\",\"website_url\":\"http:\\/\\/www.thedogandpony.com\",\"state\":\"Washington\",\"street\":\"351 Park Ave N\"},{\"id\":\"a7cbed0a-bbfb-4158-8032-4f44d680d7be\",\"name\":\"Dubtown Brewing Company\",\"brewery_type\":\"micro\",\"address_1\":\"201 Main Ave S\",\"address_2\":null,\"address_3\":null,\"city\":\"Renton\",\"state_province\":\"Washington\",\"postal_code\":\"98057-2602\",\"country\":\"United States\",\"longitude\":-122.2044462,\"latitude\":47.48147827,\"phone\":\"4252078707\",\"website_url\":\"https:\\/\\/dubtownbrewingcompany.com\",\"state\":\"Washington\",\"street\":\"201 Main Ave S\"},{\"id\":\"62f9e6a6-9200-45aa-9cf0-03ef0ffce99b\",\"name\":\"Four Generals Brewing\",\"brewery_type\":\"micro\",\"address_1\":\"229 Wells Ave S\",\"address_2\":null,\"address_3\":null,\"city\":\"Renton\",\"state_province\":\"Washington\",\"postal_code\":\"98057-2131\",\"country\":\"United States\",\"longitude\":-122.205586,\"latitude\":47.4801424,\"phone\":\"4252824360\",\"website_url\":\"http:\\/\\/www.fourgenerals.com\",\"state\":\"Washington\",\"street\":\"229 Wells Ave S\"},{\"id\":\"b94bee85-f9e3-4ad0-95b5-d9d031e15f1a\",\"name\":\"Herbert B. Friendly Brewing\",\"brewery_type\":\"closed\",\"address_1\":\"527 Wells Ave S\",\"address_2\":null,\"address_3\":null,\"city\":\"Renton\",\"state_province\":\"Washington\",\"postal_code\":\"98057-2703\",\"country\":\"United States\",\"longitude\":-122.205605,\"latitude\":47.47609918,\"phone\":\"4252434372\",\"website_url\":\"http:\\/\\/www.drinkhbf.com\",\"state\":\"Washington\",\"street\":\"527 Wells Ave S\"},{\"id\":\"11b078bc-1356-418c-b59e-544845f135b2\",\"name\":\"MillerCoors Brewing Co - Trenton\",\"brewery_type\":\"large\",\"address_1\":\"2525 Wayne Madison Rd\",\"address_2\":null,\"address_3\":null,\"city\":\"Trenton\",\"state_province\":\"Ohio\",\"postal_code\":\"45067-9760\",\"country\":\"United States\",\"longitude\":-84.48297139,\"latitude\":39.45673615,\"phone\":\"5138964601\",\"website_url\":\"http:\\/\\/www.millerbrewing.com\",\"state\":\"Ohio\",\"street\":\"2525 Wayne Madison Rd\"},{\"id\":\"14141cf3-5f2e-4179-92b9-a74e83c7aeaa\",\"name\":\"Old Bust Head Brewing Co.\",\"brewery_type\":\"micro\",\"address_1\":\"7134 Lineweaver Rd\",\"address_2\":null,\"address_3\":null,\"city\":\"Warrenton\",\"state_province\":\"Virginia\",\"postal_code\":\"20187-3949\",\"country\":\"United States\",\"longitude\":null,\"latitude\":null,\"phone\":\"5403474777\",\"website_url\":\"http:\\/\\/www.oldbusthead.com\",\"state\":\"Virginia\",\"street\":\"7134 Lineweaver Rd\"},{\"id\":\"3ece8bec-fdbd-43cb-a063-363b3203c1e2\",\"name\":\"Wort Hog Brewing Company LLC\",\"brewery_type\":\"brewpub\",\"address_1\":\"50A S 3rd St\",\"address_2\":null,\"address_3\":null,\"city\":\"Warrenton\",\"state_province\":\"Virginia\",\"postal_code\":\"20186-3340\",\"country\":\"United States\",\"longitude\":-77.7951382,\"latitude\":38.7117948,\"phone\":\"5403002739\",\"website_url\":\"http:\\/\\/www.worthogbreweryllc.com\",\"state\":\"Virginia\",\"street\":\"50A S 3rd St\"}]",
+    "size": 3896,
+    "duration": 332955,
+    "raw": {
+      "method": "GET",
+      "url": "https://api.openbrewerydb.org/v1/breweries?by_city=%7B%7B%40search-breweries%7Cbody%5B0%5D.city%7D%7D\u0026per_page=10",
+      "headers": {},
+      "body": ""
+    },
+    "effective": {
+      "method": "GET",
+      "url": "https://api.openbrewerydb.org/v1/breweries?by_city=Renton\u0026per_page=10",
+      "headers": {},
+      "body": ""
+    },
+    "trace": {
+      "logs": [
+        "[20:57:14.612Z] Preparing request to https://api.openbrewerydb.org/v1/breweries",
+        "[20:57:14.612Z] GET https://api.openbrewerydb.org/v1/breweries",
+        "[20:57:14.612Z] DNS lookup: api.openbrewerydb.org",
+        "[20:57:14.614Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3121::2",
+        "[20:57:14.614Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3120::2",
+        "[20:57:14.614Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.97.2",
+        "[20:57:14.614Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.96.2",
+        "[20:57:14.614Z] Trying [2a06:98c1:3121::2]:443... (tcp)",
+        "[20:57:14.628Z] Connected to api.openbrewerydb.org ([2a06:98c1:3121::2]:443)",
+        "[20:57:14.628Z] TLS handshake started",
+        "[20:57:14.657Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
+        "[20:57:14.657Z] Server certificate:",
+        "[20:57:14.657Z]   subject: CN=api.openbrewerydb.org",
+        "[20:57:14.657Z]   start date: Mar 20 17:44:40 2026 GMT",
+        "[20:57:14.657Z]   expire date: Jun 18 18:44:34 2026 GMT",
+        "[20:57:14.657Z]   issuer: WE1",
+        "[20:57:14.944Z] HTTP/2.0 200 OK",
+        "[20:57:14.944Z] Request completed in 332 ms"
+      ],
+      "timings": [
+        {
+          "label": "DNS Lookup",
+          "duration": 2
+        },
+        {
+          "label": "TCP Connect",
+          "duration": 13
+        },
+        {
+          "label": "TLS Handshake",
+          "duration": 28
+        },
+        {
+          "label": "Waiting (TTFB)",
+          "duration": 287
+        },
+        {
+          "label": "Transfer",
+          "duration": 0
+        },
+        {
+          "label": "Total",
+          "duration": 332
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-04-18T00:00:00Z",
+  "updatedAt": "2026-04-18T22:57:14.944780119+02:00"
+}

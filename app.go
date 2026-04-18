@@ -164,12 +164,13 @@ func writeThemeFile(dir, filename string, theme UserTheme) {
 
 // HTTPRequest represents an HTTP request to be made
 type HTTPRequest struct {
-	Method      string            `json:"method"`
-	URL         string            `json:"url"`
-	Headers     map[string]string `json:"headers"`
-	Body        string            `json:"body"`
-	Query       map[string]string `json:"query"`
-	EnvFilePath string            `json:"envFilePath,omitempty"` // path to the collection root; .postier.env is resolved from it
+	Method          string            `json:"method"`
+	URL             string            `json:"url"`
+	Headers         map[string]string `json:"headers"`
+	Body            string            `json:"body"`
+	Query           map[string]string `json:"query"`
+	EnvFilePath     string            `json:"envFilePath,omitempty"`     // path to the collection root; .postier.env is resolved from it
+	FollowRedirects bool              `json:"followRedirects,omitempty"` // whether to follow 3xx redirects (default false = don't follow)
 }
 
 // EffectiveRequest holds a snapshot of the request with the URL fully built
@@ -222,6 +223,22 @@ type HTTPResponse struct {
 	Raw        EffectiveRequest    `json:"raw"`       // pre-interpolation, {{placeholders}} intact
 	Effective  EffectiveRequest    `json:"effective"` // post-interpolation, vars resolved
 	Trace      RequestTrace        `json:"trace"`     // log lines and per-phase timings
+}
+
+// redirectLoggingTransport wraps an http.Transport and calls onRedirect for
+// every 3xx response before the http.Client follows the redirect, so the
+// timing breakdown can show the intermediate status.
+type redirectLoggingTransport struct {
+	base       *http.Transport
+	onRedirect func(status string)
+}
+
+func (t *redirectLoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.base.RoundTrip(req)
+	if err == nil && resp != nil && resp.StatusCode >= 300 && resp.StatusCode < 400 && t.onRedirect != nil {
+		t.onRedirect(resp.Status)
+	}
+	return resp, err
 }
 
 // copyMap returns a shallow copy of m so the original is not mutated.
@@ -618,11 +635,21 @@ func (a *App) MakeRequest(req HTTPRequest) HTTPResponse {
 	httpReq = httpReq.WithContext(httptrace.WithClientTrace(httpReq.Context(), httpTrace))
 
 	// ── Execute ───────────────────────────────────────────────────────────────
+	baseTransport := &http.Transport{DisableKeepAlives: true}
 	client := &http.Client{
 		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			DisableKeepAlives: true,
+		Transport: &redirectLoggingTransport{
+			base: baseTransport,
+			onRedirect: func(status string) {
+				traceTimings = append(traceTimings, TimingPhase{Label: "↳ " + status, Duration: 0})
+				addLog("↳ Redirect: " + status)
+			},
 		},
+	}
+	if !req.FollowRedirects {
+		client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
 	}
 
 	resp, err := client.Do(httpReq)
@@ -1124,12 +1151,13 @@ func (a *App) RunCollection(filePaths []string, envFilePath string, saveResponse
 		}
 
 		httpReq := HTTPRequest{
-			Method:      saved.Method,
-			URL:         saved.URL,
-			Headers:     copyMap(saved.Headers), // defensive copy — MakeRequest mutates maps in-place
-			Body:        saved.Body,
-			Query:       copyMap(saved.Query),   // same: map assignment copies the pointer, not the data
-			EnvFilePath: envFilePath,
+			Method:          saved.Method,
+			URL:             saved.URL,
+			Headers:         copyMap(saved.Headers), // defensive copy — MakeRequest mutates maps in-place
+			Body:            saved.Body,
+			Query:           copyMap(saved.Query),   // same: map assignment copies the pointer, not the data
+			EnvFilePath:     envFilePath,
+			FollowRedirects: true, // collection runs always follow redirects
 		}
 
 		resp := a.MakeRequest(httpReq)

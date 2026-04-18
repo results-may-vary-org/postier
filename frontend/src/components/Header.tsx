@@ -12,7 +12,7 @@ interface HeaderProps {
 }
 
 export function Header({ userThemes, onReloadThemes }: HeaderProps) {
-  const { autoSave, setAutoSave, selectedThemeId, setSelectedThemeId } = useCollectionStore();
+  const { autoSave, setAutoSave, followRedirects, setFollowRedirects, selectedThemeId, setSelectedThemeId } = useCollectionStore();
 
   const handleOpenThemesFolder = async () => {
     const dir = await GetThemesDir();
@@ -70,6 +70,11 @@ export function Header({ userThemes, onReloadThemes }: HeaderProps) {
               <Flex align="center" justify="between">
                 <Text size="2">Auto-save on send</Text>
                 <Switch checked={autoSave} onCheckedChange={setAutoSave} />
+              </Flex>
+
+              <Flex align="center" justify="between">
+                <Text size="2">Follow redirects</Text>
+                <Switch checked={followRedirects} onCheckedChange={setFollowRedirects} />
               </Flex>
             </Flex>
           </Popover.Content>

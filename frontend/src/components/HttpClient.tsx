@@ -39,7 +39,7 @@ interface HttpClientProps {
 }
 
 export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps) {
-  const { collections, selectedCollection, currentFilePath, autoSave, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
+  const { collections, selectedCollection, currentFilePath, autoSave, followRedirects, setCurrentFilePath, resetCurrentFilePath } = useCollectionStore();
 
   const collectionFiles = useMemo<FileEntry[]>(() => {
     const fileList: FileEntry[] = [];
@@ -302,6 +302,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
         body: bodyType === 'none' ? '' : body,
         query: queryMap,
         envFilePath: currentCollection?.path ?? '',
+        followRedirects,
       });
 
       const result = await MakeRequest(request);
@@ -447,14 +448,22 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
       loadRequestFromFile(filePath);
     };
 
+    // When a collection run saves files, refresh the currently open file only —
+    // do NOT navigate away; the user stays wherever they are.
+    const handleCollectionRefresh = () => {
+      if (currentFilePath) loadRequestFromFile(currentFilePath);
+    };
+
     window.addEventListener('postier-load-file', handleFileLoad);
     window.addEventListener('postier-clear-request', clearRequest);
+    window.addEventListener('postier-collection-refresh', handleCollectionRefresh);
 
     return () => {
       window.removeEventListener('postier-load-file', handleFileLoad);
       window.removeEventListener('postier-clear-request', clearRequest);
+      window.removeEventListener('postier-collection-refresh', handleCollectionRefresh);
     };
-  }, []);
+  }, [currentFilePath]);
 
   // Watch for changes to mark as unsaved
   useEffect(() => {
@@ -777,25 +786,48 @@ function TimingBreakdown({ timings }: { timings: main.TimingPhase[] }) {
     'Transfer':        'var(--green-9)',
   };
 
+  // One hop = DNS + TCP + TLS + TTFB + Transfer = 5 phases.
+  // Each phase row ~24px + 8px gap ≈ 160px total — use that as the cap.
+  const ONE_HOP_HEIGHT = 170;
+
   return (
     <Flex direction="column" gap="2">
       <Text size="1" weight="bold" color="gray">Timing Breakdown</Text>
-      {phases.map((phase) => (
-        <Flex key={phase.label} direction="column" gap="1">
-          <Flex justify="between">
-            <Text size="1">{phase.label}</Text>
-            <Text size="1" color="gray">{phase.duration} ms</Text>
-          </Flex>
-          <Box style={{ height: '4px', background: 'var(--gray-a4)', borderRadius: '2px' }}>
-            <Box style={{
-              height: '100%',
-              width: `${Math.max(2, Math.min(100, (phase.duration / total) * 100))}%`,
-              background: phaseColor[phase.label] ?? 'var(--accent-9)',
-              borderRadius: '2px',
-            }} />
-          </Box>
-        </Flex>
-      ))}
+      <Flex
+        direction="column"
+        gap="2"
+        style={{ maxHeight: ONE_HOP_HEIGHT, overflowY: 'auto' }}
+      >
+        {phases.map((phase, i) => {
+          if (phase.label.startsWith('↳ ')) {
+            const statusCode = parseInt(phase.label.slice(2));
+            const statusColor = statusCode < 400 ? 'yellow' : 'red';
+            return (
+              <Flex key={`redirect-${i}`} align="center" gap="2" style={{ margin: '2px 0' }}>
+                <Box style={{ flex: 1, height: '1px', background: 'var(--gray-a5)' }} />
+                <Badge size="1" color={statusColor}>{phase.label.slice(2)}</Badge>
+                <Box style={{ flex: 1, height: '1px', background: 'var(--gray-a5)' }} />
+              </Flex>
+            );
+          }
+          return (
+            <Flex key={phase.label} direction="column" gap="1">
+              <Flex justify="between">
+                <Text size="1">{phase.label}</Text>
+                <Text size="1" color="gray">{phase.duration} ms</Text>
+              </Flex>
+              <Box style={{ height: '4px', background: 'var(--gray-a4)', borderRadius: '2px' }}>
+                <Box style={{
+                  height: '100%',
+                  width: `${Math.max(2, Math.min(100, (phase.duration / total) * 100))}%`,
+                  background: phaseColor[phase.label] ?? 'var(--accent-9)',
+                  borderRadius: '2px',
+                }} />
+              </Box>
+            </Flex>
+          );
+        })}
+      </Flex>
       <Box style={{ borderTop: '1px solid var(--gray-a4)', paddingTop: '6px' }}>
         <Flex justify="between">
           <Text size="1" weight="bold">Total</Text>
