@@ -337,6 +337,12 @@ func extractChainedValue(savedRequest *PostierRequest, extractionPath string) st
 		if savedRequest.Response.Body == "" {
 			return ""
 		}
+		// Plain "body" with no sub-path — return the raw body as-is.
+		// This works for any content type (plain text, HTML, etc.).
+		if len(pathParts) < 2 && rootIdx < 0 {
+			return savedRequest.Response.Body
+		}
+		// Sub-path traversal requires JSON.
 		var parsedBody interface{}
 		if parseErr := json.Unmarshal([]byte(savedRequest.Response.Body), &parsedBody); parseErr != nil {
 			return ""

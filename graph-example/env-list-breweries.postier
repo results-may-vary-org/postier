@@ -1,0 +1,16 @@
+{
+  "name": "GET@api.openbrewerydb.org/v1/breweries",
+  "description": "List breweries using env vars. {{API_KEY}} is injected into the X-Api-Key header — its value is masked in the UI because the key name contains 'key'. In this demo the Brewery API does not require authentication, but this shows the pattern for APIs that do.",
+  "method": "GET",
+  "url": "{{BREWERY_API_URL}}/breweries",
+  "headers": {
+    "X-Api-Key": "{{API_KEY}}"
+  },
+  "body": "",
+  "bodyType": "none",
+  "query": {
+    "per_page": "{{PER_PAGE}}"
+  },
+  "createdAt": "2026-04-18T00:00:00Z",
+  "updatedAt": "2026-04-18T00:00:00Z"
+}
