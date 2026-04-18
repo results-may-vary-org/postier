@@ -193,6 +193,7 @@ export namespace main {
 	    filePath: string;
 	    name: string;
 	    parentDir: string;
+	    method: string;
 	    dependsOn: string[];
 	
 	    static createFrom(source: any = {}) {
@@ -204,6 +205,7 @@ export namespace main {
 	        this.filePath = source["filePath"];
 	        this.name = source["name"];
 	        this.parentDir = source["parentDir"];
+	        this.method = source["method"];
 	        this.dependsOn = source["dependsOn"];
 	    }
 	}

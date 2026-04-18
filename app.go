@@ -906,6 +906,7 @@ type DependencyNode struct {
 	FilePath  string   `json:"filePath"`
 	Name      string   `json:"name"`      // bare filename without .postier
 	ParentDir string   `json:"parentDir"` // relative dir from collection root; "" if at root
+	Method    string   `json:"method"`    // HTTP method (GET, POST, …)
 	DependsOn []string `json:"dependsOn"` // display IDs of direct dependencies
 }
 
@@ -937,6 +938,7 @@ func (a *App) AnalyzeCollectionDependencies(filePaths []string, collectionPath s
 	type nodeData struct {
 		name       string
 		parentDir  string
+		method     string   // HTTP method, populated when the file is loaded
 		depPaths   []string // dependent filePaths (intra-collection)
 		depDisplay []string // display IDs for DependsOn field
 		hasSelfRef bool
@@ -965,13 +967,14 @@ func (a *App) AnalyzeCollectionDependencies(filePaths []string, collectionPath s
 		displayIdx[label] = fp
 	}
 
-	// Scan each file's fields for chain references.
+	// Scan each file's fields for chain references and collect the HTTP method.
 	for _, fp := range filePaths {
 		node := nodes[fp]
 		saved, err := a.LoadPostierRequest(fp)
 		if err != nil {
 			continue
 		}
+		node.method = saved.Method
 
 		nodeLabel := displayID(node.parentDir, node.name)
 		alreadyAdded := make(map[string]bool)
@@ -1065,6 +1068,7 @@ func (a *App) AnalyzeCollectionDependencies(filePaths []string, collectionPath s
 			FilePath:  current,
 			Name:      node.name,
 			ParentDir: node.parentDir,
+			Method:    node.method,
 			DependsOn: depDisplayLabels,
 		})
 

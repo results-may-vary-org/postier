@@ -65,3 +65,23 @@ body {
 #response {
   min-height: calc(50vh - 8px); /*8px because padding is set to 8px by radix p="2"*/
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* React Flow overrides — adapt chrome to the app theme */
+.react-flow__controls {
+  box-shadow: none;
+  border: 1px solid var(--gray-a6);
+  border-radius: var(--radius-2);
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: var(--color-panel-solid);
+  border-bottom: 1px solid var(--gray-a6);
+  fill: var(--gray-11);
+}
+.react-flow__controls-button:last-child { border-bottom: none; }
+.react-flow__controls-button:hover { background: var(--gray-a3); }
