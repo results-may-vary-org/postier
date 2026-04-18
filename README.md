@@ -28,6 +28,9 @@ You can join by contributing or via a [tip](https://github.com/sponsors/bouteill
   - Request body editor (JSON, Text, XML, SPARQL, or none)
   - Headers management
   - Query parameters management
+  - Environment variables via `.postier.env` (JSON file at the collection root) — `{{VARIABLE_NAME}}` syntax
+  - Keys whose name contains `key`, `token`, `secret`, `password`, `pass`, `auth`, `credential` or `private` (case-insensitive) are automatically masked in the UI with a reveal toggle — e.g. `api_key`, `ACCESS_TOKEN`, `DB_PASSWORD`, `CLIENT_SECRET`
+  - Follow redirects toggle (3xx redirects shown in timing breakdown)
   - Auto-save on send (togglable)
 
 - **File Collections**
@@ -37,11 +40,23 @@ You can join by contributing or via a [tip](https://github.com/sponsors/bouteill
   - Rename, delete and create files/folders directly from the sidebar
   - Currently open file is highlighted in the tree
 
+- **Dependency Graph & Chained Requests**
+  - Inject values from a previous response into any field of a later request: `{{@filename|body[0].id}}`
+  - Supported sources: `body.<path>` (dot/bracket notation, e.g. `body.data.id`, `body[0].city`), `headers.<Name>` (e.g. `headers.X-Auth[0]`), `status`
+  - `body` alone (no sub-path) injects the full raw body as-is — works with any content type including plain text
+  - Sub-path traversal (e.g. `body.data.id`) requires the source response to be valid JSON
+  - "Run all" executes the whole collection in dependency order with a live graph view
+  - Two independent chains are colored differently in the graph
+  - See [`graph-example/`](graph-example/) for a ready-to-load demo using the Open Brewery DB API
+
 - **Response Handling**
   - Status code, response time and size at a glance
-  - Response body viewer
-  - Response headers viewer
-  - Cookies viewer
+  - Response body viewer with Raw / JSON toggle and syntax highlighting
+  - JSON path explorer: click any path to copy it as an inject reference
+  - Response headers and cookies viewers
+  - Timing breakdown per phase (DNS, TCP, TLS, TTFB, Transfer) with redirect indicators
+  - Full request trace log (DNS resolutions, TLS details, certificate info)
+  - Request viewer: see the exact request sent, formatted as cURL, HTTP, wget or HTTPie
 
 - **User Interface**
   - Clean design built on Radix UI

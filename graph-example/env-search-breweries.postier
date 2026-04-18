@@ -1,0 +1,15 @@
+{
+  "name": "GET@api.openbrewerydb.org/v1/breweries/search",
+  "description": "Search breweries using env vars. {{BREWERY_API_URL}} sets the base URL and {{SEARCH_QUERY}} drives the query — change them in the .postier.env file to point to a different environment or search term without editing the request.",
+  "method": "GET",
+  "url": "{{BREWERY_API_URL}}/breweries/search",
+  "headers": {},
+  "body": "",
+  "bodyType": "none",
+  "query": {
+    "query": "{{SEARCH_QUERY}}",
+    "per_page": "{{PER_PAGE}}"
+  },
+  "createdAt": "2026-04-18T00:00:00Z",
+  "updatedAt": "2026-04-18T00:00:00Z"
+}
