@@ -261,7 +261,7 @@ export function CollectionExecutionModal({
                         </Dialog.Title>
                         <Text size="2" color="gray">
                             {analysis.order.length} request{analysis.order.length !== 1 ? "s" : ""}
-                            {" · click a card to open · drag to reposition · Space/middle-drag to pan"}
+                            {" · click to open · right-click for options · drag to reposition · Space/middle-drag to pan"}
                         </Text>
                     </Flex>
 

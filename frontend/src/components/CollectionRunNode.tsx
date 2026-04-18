@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { Badge, DropdownMenu, Flex, IconButton, Skeleton, Text, Tooltip } from "@radix-ui/themes";
-import { DotsHorizontalIcon, OpenInNewWindowIcon, ReloadIcon, UpdateIcon } from "@radix-ui/react-icons";
+import { Badge, ContextMenu, Flex, Skeleton, Text, Tooltip } from "@radix-ui/themes";
+import { OpenInNewWindowIcon, ReloadIcon, UpdateIcon } from "@radix-ui/react-icons";
 import { main } from "../../wailsjs/go/models";
 
 // ── Styling helpers ───────────────────────────────────────────────────────────
@@ -25,6 +25,13 @@ function statusBadgeColor(code: number): RadixColor {
     return "gray";
 }
 
+/** Format byte count as a human-readable size string. */
+function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 // ── Node data type ────────────────────────────────────────────────────────────
 
 export type CollectionRunNodeData = {
@@ -45,15 +52,16 @@ export type CollectionRunNodeType = Node<CollectionRunNodeData, "requestCard">;
 
 /**
  * React Flow custom node that renders a request card inside the execution graph.
- * Handles (the connection points) are invisible — edges are purely decorative.
+ *
+ * Interaction model:
+ *   - Left-click  → open request (handled by ReactFlow's onNodeClick in the parent)
+ *   - Left-drag   → reposition the card (React Flow native drag)
+ *   - Right-click → context menu (open / re-run actions)
+ *
+ * The ContextMenu.Root wraps the card so the native `contextmenu` event bubbles up to it.
+ * React Flow does not intercept `contextmenu`, so this is reliable without any stopPropagation tricks.
+ * The Tooltip (response preview) sits inside the Trigger so hover still works.
  */
-/** Format byte count as a human-readable size string. */
-function formatSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export function CollectionRunNode({ id, data }: NodeProps<CollectionRunNodeType>) {
     const { depNode, result, isRunning, chainColor, onCardClick, onRerunAll, onRerunOne } = data;
     const response = result?.response;
@@ -62,7 +70,8 @@ export function CollectionRunNode({ id, data }: NodeProps<CollectionRunNodeType>
     const headerCount = response?.headers ? Object.keys(response.headers).length : 0;
     const methodColor = METHOD_COLORS[depNode.method?.toUpperCase()] ?? "var(--gray-11)";
 
-    const cardInner = (
+    // The raw card — shared between the plain and tooltip-wrapped variants.
+    const cardDiv = (
         <div
             style={{
                 width: 200,
@@ -93,7 +102,7 @@ export function CollectionRunNode({ id, data }: NodeProps<CollectionRunNodeType>
             <Handle type="target" position={Position.Left}  style={{ opacity: 0, pointerEvents: "none" }} />
             <Handle type="source" position={Position.Right} style={{ opacity: 0, pointerEvents: "none" }} />
 
-            {/* Header: HTTP method + status badge / spinner + options menu */}
+            {/* Header: HTTP method + status badge / spinner */}
             <Flex justify="between" align="center" gap="2">
                 <Text
                     size="1"
@@ -103,49 +112,15 @@ export function CollectionRunNode({ id, data }: NodeProps<CollectionRunNodeType>
                     {depNode.method || "—"}
                 </Text>
 
-                {/* Status indicator + actions menu — `nodrag nopan` keeps React Flow from treating
-                    these buttons as drag/pan targets; `stopPropagation` on the trigger prevents
-                    the node-level onNodeClick from firing when the menu is opened. */}
-                <Flex align="center" gap="1" className="nodrag nopan">
-                    {isRunning && !hasResult ? (
-                        <UpdateIcon style={{ animation: "spin 1s linear infinite", color: "var(--gray-10)", flexShrink: 0 }} />
-                    ) : hasResult && response ? (
-                        <Badge size="1" color={statusBadgeColor(response.statusCode)} variant="soft">
-                            {response.statusCode}
-                        </Badge>
-                    ) : (
-                        <Skeleton width="32px" height="18px" style={{ borderRadius: "var(--radius-2)" }} />
-                    )}
-
-                    <DropdownMenu.Root modal={false}>
-                        <DropdownMenu.Trigger onClick={e => e.stopPropagation()}>
-                            <IconButton size="1" variant="ghost" color="gray" style={{ cursor: "pointer" }}>
-                                <DotsHorizontalIcon />
-                            </IconButton>
-                        </DropdownMenu.Trigger>
-                        <DropdownMenu.Content size="1">
-                            <DropdownMenu.Item onSelect={() => onCardClick(id)}>
-                                <Flex align="center" gap="2">
-                                    <OpenInNewWindowIcon />
-                                    Open request
-                                </Flex>
-                            </DropdownMenu.Item>
-                            <DropdownMenu.Separator />
-                            <DropdownMenu.Item disabled={isRunning} onSelect={onRerunAll}>
-                                <Flex align="center" gap="2">
-                                    <ReloadIcon />
-                                    Re-run all
-                                </Flex>
-                            </DropdownMenu.Item>
-                            <DropdownMenu.Item disabled={isRunning} onSelect={() => onRerunOne(id)}>
-                                <Flex align="center" gap="2">
-                                    <ReloadIcon />
-                                    Re-run "{depNode.name}"
-                                </Flex>
-                            </DropdownMenu.Item>
-                        </DropdownMenu.Content>
-                    </DropdownMenu.Root>
-                </Flex>
+                {isRunning && !hasResult ? (
+                    <UpdateIcon style={{ animation: "spin 1s linear infinite", color: "var(--gray-10)", flexShrink: 0 }} />
+                ) : hasResult && response ? (
+                    <Badge size="1" color={statusBadgeColor(response.statusCode)} variant="soft">
+                        {response.statusCode}
+                    </Badge>
+                ) : (
+                    <Skeleton width="32px" height="18px" style={{ borderRadius: "var(--radius-2)" }} />
+                )}
             </Flex>
 
             {/* Request name */}
@@ -214,8 +189,8 @@ export function CollectionRunNode({ id, data }: NodeProps<CollectionRunNodeType>
         </div>
     );
 
-    // Tooltip with response preview — only shown after a run
-    const card = hasResult && response ? (
+    // Wrap with a response-preview tooltip once a result exists.
+    const cardWithTooltip = hasResult && response ? (
         <Tooltip
             content={
                 <Flex direction="column" gap="1" style={{ maxWidth: 340 }}>
@@ -244,9 +219,38 @@ export function CollectionRunNode({ id, data }: NodeProps<CollectionRunNodeType>
                 </Flex>
             }
         >
-            {cardInner}
+            {cardDiv}
         </Tooltip>
-    ) : cardInner;
+    ) : cardDiv;
 
-    return card;
+    // ContextMenu wraps the card (including the tooltip trigger) so right-click always
+    // opens the menu regardless of which part of the card the pointer is on.
+    return (
+        <ContextMenu.Root>
+            <ContextMenu.Trigger>
+                {cardWithTooltip}
+            </ContextMenu.Trigger>
+            <ContextMenu.Content size="1">
+                <ContextMenu.Item onSelect={() => onCardClick(id)}>
+                    <Flex align="center" gap="2">
+                        <OpenInNewWindowIcon />
+                        Open request
+                    </Flex>
+                </ContextMenu.Item>
+                <ContextMenu.Separator />
+                <ContextMenu.Item disabled={isRunning} onSelect={onRerunAll}>
+                    <Flex align="center" gap="2">
+                        <ReloadIcon />
+                        Re-run all
+                    </Flex>
+                </ContextMenu.Item>
+                <ContextMenu.Item disabled={isRunning} onSelect={() => onRerunOne(id)}>
+                    <Flex align="center" gap="2">
+                        <ReloadIcon />
+                        Re-run "{depNode.name}"
+                    </Flex>
+                </ContextMenu.Item>
+            </ContextMenu.Content>
+        </ContextMenu.Root>
+    );
 }
