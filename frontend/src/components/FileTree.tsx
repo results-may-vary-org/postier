@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { Box, Flex, Button, IconButton, TextField, ContextMenu, Text, ScrollArea, DropdownMenu, Dialog, Badge } from "@radix-ui/themes";
 import { Separator } from "@radix-ui/themes/dist/esm";
 import { ChevronRightIcon, PlusIcon, Cross2Icon, UpdateIcon, EnvelopeClosedIcon, HamburgerMenuIcon, MixerVerticalIcon, ExternalLinkIcon, TriangleRightIcon } from "@radix-ui/react-icons";
-import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry, OpenInFileManager, RunCollection } from "../../wailsjs/go/main/App";
+import { GetDirectoryTree, CreateDirectory, CreateFile, DeleteFile, DeleteDirectory, OpenFolderDialog, RenameEntry, OpenInFileManager, RunCollection, AnalyzeCollectionDependencies } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { Collection } from "../types/common";
 import { useCollectionStore } from "../stores/store";
 import { Alert, ConfirmAlert, InfoAlert } from "./Alert";
 import { AutoSaveModal } from "./AutoSaveModal";
 import { EnvEditor } from "./EnvEditor";
+import { CollectionExecutionModal } from "./CollectionExecutionModal";
 
 type DirectoryTree = main.DirectoryTree;
 type FileSystemEntry = main.FileSystemEntry;
@@ -46,6 +47,9 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
 
   const [collectionRunResults, setCollectionRunResults] = useState<{ collectionName: string; results: main.CollectionRunResult[] } | null>(null);
   const [isRunningCollection, setIsRunningCollection] = useState(false);
+  const [executionPlan, setExecutionPlan] = useState<{ collectionName: string; collectionPath: string; analysis: main.DependencyAnalysis } | null>(null);
+  const [cycleError, setCycleError] = useState<{ collectionName: string; cycleNames: string[] } | null>(null);
+  const [selfRefError, setSelfRefError] = useState<{ collectionName: string; selfRefNames: string[] } | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ path: string; name: string; isDir: boolean; hasChildren: boolean } | null>(null);
   const [closeConfirmation, setCloseConfirmation] = useState<{ collectionId: string; collectionName: string } | null>(null);
   const [duplicateCollectionPath, setDuplicateCollectionPath] = useState<string | null>(null);
@@ -487,15 +491,37 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
     return paths;
   };
 
-  /** Run all requests in a collection sequentially, saving responses so chain refs resolve */
+  /** Analyse dependencies, then either show the execution plan modal or a cycle error. */
   const handleRunCollection = async (collection: { id: string; name: string; path: string; tree: DirectoryTree }) => {
     const filePaths = collectFilePaths(collection.tree);
     if (filePaths.length === 0) return;
 
     setIsRunningCollection(true);
     try {
-      const results = await RunCollection(filePaths, collection.path, autoSave);
-      setCollectionRunResults({ collectionName: collection.name, results });
+      const analysis = await AnalyzeCollectionDependencies(filePaths, collection.path);
+      if (analysis.selfRefNames && analysis.selfRefNames.length > 0) {
+        setSelfRefError({ collectionName: collection.name, selfRefNames: analysis.selfRefNames });
+      } else if (analysis.hasCycle) {
+        setCycleError({ collectionName: collection.name, cycleNames: analysis.cycleNames ?? [] });
+      } else {
+        setExecutionPlan({ collectionName: collection.name, collectionPath: collection.path, analysis });
+      }
+    } catch (err) {
+      console.error('Dependency analysis failed:', err);
+    } finally {
+      setIsRunningCollection(false);
+    }
+  };
+
+  /** Execute the pre-sorted file list produced by the execution plan modal. */
+  const handleExecuteCollection = async (orderedFilePaths: string[]) => {
+    if (!executionPlan) return;
+    const { collectionName, collectionPath } = executionPlan;
+    setExecutionPlan(null);
+    setIsRunningCollection(true);
+    try {
+      const results = await RunCollection(orderedFilePaths, collectionPath, autoSave);
+      setCollectionRunResults({ collectionName, results });
       if (autoSave) {
         window.dispatchEvent(new CustomEvent('postier-collection-refresh'));
       }
@@ -911,6 +937,35 @@ export function FileTree({ onToggleSidebar }: FileTreeProps) {
           collectionPath={envEditorCollection.path}
         />
       )}
+
+      {/* Execution plan modal — shown before the run starts */}
+      {executionPlan && (
+        <CollectionExecutionModal
+          collectionName={executionPlan.collectionName}
+          analysis={executionPlan.analysis}
+          isRunning={isRunningCollection}
+          onExecute={handleExecuteCollection}
+          onClose={() => setExecutionPlan(null)}
+        />
+      )}
+
+      {/* Self-reference error */}
+      <InfoAlert
+        isOpen={!!selfRefError}
+        onClose={() => setSelfRefError(null)}
+        title="Self-reference detected"
+        description={`The following requests reference their own response and cannot run:\n\n${selfRefError?.selfRefNames.join(', ')}\n\nA request cannot use its own response as input — remove the self-reference before running the collection.`}
+        okLabel="Close"
+      />
+
+      {/* Circular dependency error */}
+      <InfoAlert
+        isOpen={!!cycleError}
+        onClose={() => setCycleError(null)}
+        title="Circular dependency detected"
+        description={`The following requests reference each other in a cycle and cannot be resolved:\n\n${cycleError?.cycleNames.join(' → ')}\n\nRemove the circular reference before running the collection.`}
+        okLabel="Close"
+      />
 
       {/* Collection run results dialog */}
       <Dialog.Root open={!!collectionRunResults} onOpenChange={open => { if (!open) setCollectionRunResults(null); }}>

@@ -1,4 +1,9 @@
-export interface FileEntry { name: string; path: string; }
+export interface FileEntry {
+    name: string;
+    path: string;
+    /** Relative directory from the collection root. Empty string when the file sits at the root. */
+    parentDir: string;
+}
 
 /**
  * Recursively generate all leaf paths from a decoded JSON value.
