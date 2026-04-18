@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useEffect, useState } from "react";
-import { Box, Flex, Button, ScrollArea, Text } from "@radix-ui/themes";
+import { Box, Dialog, Flex, Button, ScrollArea, Text } from "@radix-ui/themes";
 import { CheckIcon, CopyIcon } from "@radix-ui/react-icons";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, drawSelection, highlightSpecialChars } from "@codemirror/view";
@@ -137,9 +137,14 @@ export function ResponseBodyViewer({ body, headers, viewerRef, currentFilePath }
     });
   }, [resolvedTheme]);
 
+  // Compute paths here so the toolbar can conditionally show the button
+  const jsonPaths = (() => {
+    try { return generateJsonPaths(JSON.parse(body)); } catch { return []; }
+  })();
+
   return (
     <Box ref={viewerRef} style={{ display: 'flex', flexDirection: 'column' }}>
-      <Flex gap="1" mb="1">
+      <Flex gap="1" mb="1" align="center">
         <Button
           size="1"
           variant={viewMode === 'raw' ? 'solid' : 'soft'}
@@ -154,6 +159,9 @@ export function ResponseBodyViewer({ body, headers, viewerRef, currentFilePath }
         >
           JSON
         </Button>
+        {jsonPaths.length > 0 && (
+          <JsonPathExplorer paths={jsonPaths} currentFilePath={currentFilePath} />
+        )}
       </Flex>
       <Box
         style={{
@@ -165,7 +173,6 @@ export function ResponseBodyViewer({ body, headers, viewerRef, currentFilePath }
       >
         <div ref={editorRef} style={{ flex: 1, overflowY: 'auto' }} />
       </Box>
-      <JsonPathExplorer responseBody={body} currentFilePath={currentFilePath} />
     </Box>
   );
 }
@@ -173,22 +180,17 @@ export function ResponseBodyViewer({ body, headers, viewerRef, currentFilePath }
 // ── JsonPathExplorer ──────────────────────────────────────────────────────────
 
 interface JsonPathExplorerProps {
-    responseBody: string;
+    paths: string[];
     currentFilePath?: string;
 }
 
-function JsonPathExplorer({ responseBody, currentFilePath }: JsonPathExplorerProps) {
-    const [explorerIsOpen, setExplorerIsOpen] = useState(false);
+function JsonPathExplorer({ paths, currentFilePath }: JsonPathExplorerProps) {
+    const [open, setOpen] = useState(false);
     const [recentlyCopiedPath, setRecentlyCopiedPath] = useState<string | null>(null);
-
-    let parsedResponseBody: unknown = null;
-    try { parsedResponseBody = JSON.parse(responseBody); } catch { return null; }
 
     const currentFileName = currentFilePath
         ? currentFilePath.split('/').pop()?.replace('.postier', '') ?? ''
         : '';
-
-    const availablePaths = generateJsonPaths(parsedResponseBody);
 
     const copyPathAsReference = (jsonPath: string) => {
         const variableReference = currentFileName
@@ -200,16 +202,22 @@ function JsonPathExplorer({ responseBody, currentFilePath }: JsonPathExplorerPro
     };
 
     return (
-        <Box>
-            <Button size="1" variant="ghost" onClick={() => setExplorerIsOpen(isOpen => !isOpen)} mt="1">
-                {explorerIsOpen ? 'Hide paths' : 'Explore paths'}
-            </Button>
-            {explorerIsOpen && (
-                <ScrollArea style={{ maxHeight: '160px', marginTop: '4px' }}>
-                    {availablePaths.map(jsonPath => (
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+            <Dialog.Trigger>
+                <Button size="1" variant="ghost">Explore paths</Button>
+            </Dialog.Trigger>
+            <Dialog.Content style={{ maxWidth: 480 }}>
+                <Dialog.Title>Explore paths</Dialog.Title>
+                <Dialog.Description size="2" color="gray" mb="3">
+                    {currentFileName
+                        ? <>Click a path to copy it as <Text style={{ fontFamily: 'var(--font-mono)' }}>{`{{@${currentFileName}|…}}`}</Text></>
+                        : 'Click a path to copy it to the clipboard.'}
+                </Dialog.Description>
+                <ScrollArea style={{ maxHeight: '60vh' }}>
+                    {paths.map(jsonPath => (
                         <Flex key={jsonPath} justify="between" align="center" px="2" py="1"
                               style={{ borderBottom: '1px solid var(--gray-a3)' }}>
-                            <Text size="1" style={{ fontFamily: 'monospace', color: 'var(--gray-11)' }}>
+                            <Text size="1" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gray-11)' }}>
                                 {jsonPath}
                             </Text>
                             <Button size="1" variant="ghost" onClick={() => copyPathAsReference(jsonPath)}>
@@ -218,7 +226,7 @@ function JsonPathExplorer({ responseBody, currentFilePath }: JsonPathExplorerPro
                         </Flex>
                     ))}
                 </ScrollArea>
-            )}
-        </Box>
+            </Dialog.Content>
+        </Dialog.Root>
     );
 }

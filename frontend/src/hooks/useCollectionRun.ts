@@ -103,11 +103,8 @@ export function useCollectionRun() {
                 return { ...previous, results: merged };
             });
             if (autoSave) {
+                // HttpClient listens to this and reloads only its currently open file — no navigation
                 window.dispatchEvent(new CustomEvent('postier-collection-refresh'));
-                // Reload the open editor if one of the saved files is currently open
-                for (const fp of orderedFilePaths) {
-                    window.dispatchEvent(new CustomEvent('postier-load-file', { detail: { filePath: fp } }));
-                }
             }
         } catch (err) {
             console.error('Collection run failed:', err);

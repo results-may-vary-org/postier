@@ -8,6 +8,7 @@ interface CollectionState {
   selectedCollection: string
   currentFilePath: string
   autoSave: boolean
+  followRedirects: boolean
   showAutoSaveModal: boolean
   selectedThemeId: string
   setCollections: (collections: Collection[]) => void
@@ -20,6 +21,7 @@ interface CollectionState {
   setExpandedNodes: (nodes: string[]) => void
   resetExpandedNodes: () => void
   setAutoSave: (autoSave: boolean) => void
+  setFollowRedirects: (follow: boolean) => void
   setShowAutoSaveModal: (show: boolean) => void
   setSelectedThemeId: (id: string) => void
 }
@@ -32,6 +34,7 @@ export const useCollectionStore = create<CollectionState>()(
       selectedCollection: '',
       currentFilePath: '',
       autoSave: false,
+      followRedirects: true,
       showAutoSaveModal: false,
       selectedThemeId: 'default',
 
@@ -49,6 +52,7 @@ export const useCollectionStore = create<CollectionState>()(
       resetExpandedNodes: () => set({ expandedNodes: [] }),
 
       setAutoSave: (autoSave: boolean) => set({ autoSave: autoSave }),
+      setFollowRedirects: (follow: boolean) => set({ followRedirects: follow }),
       setShowAutoSaveModal: (show: boolean) => set({ showAutoSaveModal: show }),
       setSelectedThemeId: (id: string) => set({ selectedThemeId: id }),
     }),
