@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import { TextField, Box, Text, Theme } from "@radix-ui/themes";
 import { LoadPostierRequest } from "../../wailsjs/go/main/App";
@@ -44,6 +44,12 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
     const [phase, setPhase] = useState<1 | 2>(1);
     const [chosenFile, setChosenFile] = useState('');
     const pathCacheRef = useRef<Map<string, string[]>>(new Map());
+
+    // Map from bare file name → parentDir for disambiguation display in phase 1 dropdown.
+    const parentDirByName = useMemo(
+        () => Object.fromEntries(collectionFiles.map(f => [f.name, f.parentDir])),
+        [collectionFiles]
+    );
 
     // ── Focus management ──────────────────────────────────────────────────────
 
@@ -288,6 +294,20 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
                             }}
                         >
                             <Text size="1" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0' }}>{s}</Text>
+                            {phase === 1 && parentDirByName[s] && (
+                                <Text
+                                    size="1"
+                                    style={{
+                                        marginLeft: 'var(--space-2)',
+                                        opacity: 0.6,
+                                        color: i === selectedIndex ? 'var(--accent-contrast)' : 'var(--gray-10)',
+                                        fontFamily: 'var(--font-mono)',
+                                        letterSpacing: '0',
+                                    }}
+                                >
+                                    ({parentDirByName[s]})
+                                </Text>
+                            )}
                         </div>
                     ))}
                 </div>

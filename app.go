@@ -23,7 +23,7 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-var chainRefRe = regexp.MustCompile(`\{\{@([^|{}\s]+)\|([^{}\s]+)\}\}`)
+var chainRefRe = regexp.MustCompile(`\{\{@([^|{}]+)\|([^{}]+)\}\}`)
 
 // App struct
 type App struct {
@@ -899,6 +899,204 @@ func (a *App) ListPostierFiles(directoryPath string) ([]FileSystemEntry, error) 
 // RenameEntry renames or moves a file or directory atomically
 func (a *App) RenameEntry(oldPath string, newPath string) error {
 	return os.Rename(oldPath, newPath)
+}
+
+// DependencyNode represents a single request within a dependency-ordered collection plan.
+type DependencyNode struct {
+	FilePath  string   `json:"filePath"`
+	Name      string   `json:"name"`      // bare filename without .postier
+	ParentDir string   `json:"parentDir"` // relative dir from collection root; "" if at root
+	DependsOn []string `json:"dependsOn"` // display IDs of direct dependencies
+}
+
+// DependencyAnalysis is the result of AnalyzeCollectionDependencies.
+// When HasCycle is true, Order is empty and CycleNames lists the involved requests.
+// When SelfRefNames is non-empty, those requests reference themselves and cannot run.
+type DependencyAnalysis struct {
+	Order        []DependencyNode `json:"order"`
+	HasCycle     bool             `json:"hasCycle"`
+	CycleNames   []string         `json:"cycleNames"`
+	SelfRefNames []string         `json:"selfRefNames"`
+}
+
+// displayID returns the unambiguous label for a node: "name" when at the root,
+// or "parentDir/name" when nested.
+func displayID(parentDir, name string) string {
+	if parentDir == "" {
+		return name
+	}
+	return parentDir + "/" + name
+}
+
+// AnalyzeCollectionDependencies inspects a set of .postier files for {{@name|path}}
+// chain references, builds a dependency graph, and returns a topologically sorted
+// execution plan. Circular dependencies and self-references are both detected and
+// reported, blocking execution.
+func (a *App) AnalyzeCollectionDependencies(filePaths []string, collectionPath string) DependencyAnalysis {
+	// nodeData holds metadata and dependency info keyed by filePath.
+	type nodeData struct {
+		name       string
+		parentDir  string
+		depPaths   []string // dependent filePaths (intra-collection)
+		depDisplay []string // display IDs for DependsOn field
+		hasSelfRef bool
+	}
+
+	prefix := collectionPath + string(filepath.Separator)
+
+	nodes := make(map[string]*nodeData, len(filePaths)) // key: filePath
+	// nameIdx allows multi-match: bare name → []filePath (handles same-name files)
+	nameIdx := make(map[string][]string, len(filePaths))
+	// displayIdx allows matching by full relative path (e.g. "folder/name")
+	displayIdx := make(map[string]string, len(filePaths)) // displayID → filePath
+
+	for _, fp := range filePaths {
+		rel := strings.TrimPrefix(fp, prefix)
+		rel = strings.TrimSuffix(rel, ".postier")
+		parentDir := filepath.Dir(rel)
+		if parentDir == "." {
+			parentDir = ""
+		}
+		name := filepath.Base(rel)
+		label := displayID(parentDir, name)
+
+		nodes[fp] = &nodeData{name: name, parentDir: parentDir}
+		nameIdx[name] = append(nameIdx[name], fp)
+		displayIdx[label] = fp
+	}
+
+	// Scan each file's fields for chain references.
+	for _, fp := range filePaths {
+		node := nodes[fp]
+		saved, err := a.LoadPostierRequest(fp)
+		if err != nil {
+			continue
+		}
+
+		nodeLabel := displayID(node.parentDir, node.name)
+		alreadyAdded := make(map[string]bool)
+
+		addDependency := func(depFilePath string) {
+			if alreadyAdded[depFilePath] {
+				return
+			}
+			alreadyAdded[depFilePath] = true
+			depNode := nodes[depFilePath]
+			node.depPaths = append(node.depPaths, depFilePath)
+			node.depDisplay = append(node.depDisplay, displayID(depNode.parentDir, depNode.name))
+		}
+
+		scanForRefs := func(fieldValue string) {
+			for _, match := range chainRefRe.FindAllStringSubmatch(fieldValue, -1) {
+				refName := match[1]
+				// Self-reference: the ref target is the current file (by name or full label)
+				if refName == node.name || refName == nodeLabel {
+					node.hasSelfRef = true
+					continue
+				}
+				// Prefer exact match by full display ID (e.g. "folder/name" — unambiguous)
+				if depFilePath, ok := displayIdx[refName]; ok {
+					addDependency(depFilePath)
+					continue
+				}
+				// Fall back to bare name (may match multiple same-named files — add all)
+				for _, depFilePath := range nameIdx[refName] {
+					addDependency(depFilePath)
+				}
+			}
+		}
+
+		scanForRefs(saved.URL)
+		scanForRefs(saved.Body)
+		for _, headerValue := range saved.Headers {
+			scanForRefs(headerValue)
+		}
+		for _, queryValue := range saved.Query {
+			scanForRefs(queryValue)
+		}
+	}
+
+	// Collect self-references before graph construction.
+	selfRefNames := []string{}
+	for _, fp := range filePaths {
+		node := nodes[fp]
+		if node.hasSelfRef {
+			selfRefNames = append(selfRefNames, displayID(node.parentDir, node.name))
+		}
+	}
+	sort.Strings(selfRefNames)
+	if len(selfRefNames) > 0 {
+		return DependencyAnalysis{SelfRefNames: selfRefNames}
+	}
+
+	// Build adjacency list and in-degree map for Kahn's BFS (keyed by filePath).
+	adj := make(map[string][]string, len(nodes))
+	inDegree := make(map[string]int, len(nodes))
+	for filePath := range nodes {
+		inDegree[filePath] = 0
+	}
+	for filePath, node := range nodes {
+		for _, depFilePath := range node.depPaths {
+			adj[depFilePath] = append(adj[depFilePath], filePath)
+			inDegree[filePath]++
+		}
+	}
+
+	// Kahn's BFS topological sort.
+	queue := make([]string, 0, len(nodes))
+	for filePath := range nodes {
+		if inDegree[filePath] == 0 {
+			queue = append(queue, filePath)
+		}
+	}
+	sort.Strings(queue)
+
+	ordered := make([]DependencyNode, 0, len(nodes))
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		node := nodes[current]
+		depDisplayLabels := node.depDisplay
+		if depDisplayLabels == nil {
+			depDisplayLabels = []string{}
+		}
+		ordered = append(ordered, DependencyNode{
+			FilePath:  current,
+			Name:      node.name,
+			ParentDir: node.parentDir,
+			DependsOn: depDisplayLabels,
+		})
+
+		nextBatch := []string{}
+		for _, dependent := range adj[current] {
+			inDegree[dependent]--
+			if inDegree[dependent] == 0 {
+				nextBatch = append(nextBatch, dependent)
+			}
+		}
+		sort.Strings(nextBatch)
+		queue = append(queue, nextBatch...)
+	}
+
+	// Any node not in ordered is part of (or blocked by) a cycle.
+	if len(ordered) < len(nodes) {
+		processedSet := make(map[string]bool, len(ordered))
+		for _, orderedNode := range ordered {
+			processedSet[orderedNode.FilePath] = true
+		}
+		cycleNames := []string{}
+		for _, fp := range filePaths {
+			if !processedSet[fp] {
+				node := nodes[fp]
+				cycleNames = append(cycleNames, displayID(node.parentDir, node.name))
+			}
+		}
+		sort.Strings(cycleNames)
+		return DependencyAnalysis{HasCycle: true, CycleNames: cycleNames}
+	}
+
+	return DependencyAnalysis{Order: ordered}
 }
 
 // CollectionRunResult holds the outcome of a single request within a collection run.

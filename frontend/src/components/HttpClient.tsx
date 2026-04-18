@@ -43,16 +43,23 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
 
   const collectionFiles = useMemo<FileEntry[]>(() => {
     const fileList: FileEntry[] = [];
+    const activeCollection = collections.find((c: any) => c.id === selectedCollection);
+    const collectionRoot = activeCollection?.path ?? '';
     const walkTree = (treeNode: main.DirectoryTree) => {
       if (!treeNode.entry.isDir && treeNode.entry.path.endsWith('.postier')) {
+        const rel = treeNode.entry.path
+          .replace(collectionRoot + '/', '')
+          .replace('.postier', '');
+        const slashIndex = rel.lastIndexOf('/');
+        const parentDir = slashIndex >= 0 ? rel.slice(0, slashIndex) : '';
         fileList.push({
           name: treeNode.entry.name.replace('.postier', ''),
           path: treeNode.entry.path,
+          parentDir,
         });
       }
       treeNode.children?.forEach(walkTree);
     };
-    const activeCollection = collections.find((c: any) => c.id === selectedCollection);
     if (activeCollection?.tree) walkTree(activeCollection.tree);
     return fileList;
   }, [collections, selectedCollection]);
@@ -75,6 +82,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
   const [responseBody, setResponseBody] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [noCollectionAlertOpen, setNoCollectionAlertOpen] = useState(false);
+  const [selfRefAlertOpen, setSelfRefAlertOpen] = useState(false);
 
   const arraysEqual = (a: KeyValue[], b: KeyValue[]) => {
     if (a.length !== b.length) return false;
@@ -250,6 +258,20 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
   };
 
   const sendRequest = async () => {
+    // Guard: detect self-references (e.g. {{@my-request|body.id}} inside my-request.postier)
+    if (currentFilePath) {
+      const currentFileName = currentFilePath.split('/').pop()?.replace('.postier', '') ?? '';
+      if (currentFileName) {
+        const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const selfRefPattern = new RegExp(`\\{\\{@${escapeRegex(currentFileName)}\\|`);
+        const allFieldValues = [url, body, ...headers.map(h => h.value), ...queryParams.map(q => q.value)];
+        if (allFieldValues.some(fieldValue => selfRefPattern.test(fieldValue))) {
+          setSelfRefAlertOpen(true);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     setResponse(null);
     try {
@@ -726,6 +748,14 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
         onClose={() => setNoCollectionAlertOpen(false)}
         title="No collection loaded"
         description="Please load a folder first before saving."
+      />
+
+      <InfoAlert
+        isOpen={selfRefAlertOpen}
+        onClose={() => setSelfRefAlertOpen(false)}
+        title="Self-reference detected"
+        description="This request references its own response via {{@…}}. A request cannot read its own response while executing — remove the self-reference before sending."
+        okLabel="Close"
       />
 
     </Box>
