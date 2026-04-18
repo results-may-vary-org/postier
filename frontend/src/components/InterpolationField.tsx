@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
-import { TextField, Box, Text } from "@radix-ui/themes";
+import { TextField, Box, Text, Theme } from "@radix-ui/themes";
 import { LoadPostierRequest } from "../../wailsjs/go/main/App";
 import { FileEntry, generateJsonPaths } from "../utils/jsonPaths";
 
@@ -25,6 +25,12 @@ interface InterpolationFieldProps {
  * • Any printable character typed while the dropdown is focused is forwarded
  *   into the input so the user can keep narrowing the list without leaving
  *   the keyboard flow.
+ *
+ * CSS variable scope
+ * ──────────────────
+ * • The portal is wrapped with <Theme asChild> (same technique used by Radix's
+ *   own Popover source) so all --accent-* / --gray-* / --color-* variables
+ *   resolve correctly even though the div lives outside .radix-themes in the DOM.
  */
 export function InterpolationField({ value, onChange, placeholder, collectionFiles }: InterpolationFieldProps) {
     const inputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +47,6 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
 
     // ── Focus management ──────────────────────────────────────────────────────
 
-    // Move focus to the dropdown when it opens
     useEffect(() => {
         if (isOpen && dropdownRef.current) {
             dropdownRef.current.focus();
@@ -69,15 +74,16 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
         if (cached) return cached;
 
         const req = await LoadPostierRequest(filePath);
-        const paths: string[] = ['status'];
-        Object.keys(req.response?.headers ?? {}).forEach(h => {
-            paths.push(`headers.${h}[0]`);
-        });
+        const paths: string[] = [];
         if (req.response?.body) {
             try {
                 paths.push(...generateJsonPaths(JSON.parse(req.response.body)));
             } catch { /* not JSON, skip */ }
         }
+        paths.push('status');
+        Object.keys(req.response?.headers ?? {}).forEach(h => {
+            paths.push(`headers.${h}[0]`);
+        });
         pathCacheRef.current.set(filePath, paths);
         return paths;
     };
@@ -161,13 +167,11 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
 
     // ── Keyboard handlers ─────────────────────────────────────────────────────
 
-    // On the input: open/recompute suggestions; do NOT handle arrow keys here
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onChange(e.target.value);
         computeSuggestions(e.target.value, e.target.selectionStart ?? e.target.value.length);
     };
 
-    // On the dropdown div: full navigation + close
     const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -191,7 +195,6 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
             const newValue = value.slice(0, start) + e.key + value.slice(end);
             onChange(newValue);
             const newCursor = start + 1;
-            // Re-focus input, restore cursor, then recompute suggestions
             input.focus();
             requestAnimationFrame(() => {
                 input.setSelectionRange(newCursor, newCursor);
@@ -242,43 +245,53 @@ export function InterpolationField({ value, onChange, placeholder, collectionFil
 
     const dropdown = isOpen && suggestions.length > 0 && dropdownRect
         ? ReactDOM.createPortal(
-            <div
-                ref={dropdownRef}
-                tabIndex={-1}
-                onKeyDown={handleDropdownKeyDown}
-                style={{
-                    position: 'fixed',
-                    top: dropdownRect.top,
-                    left: dropdownRect.left,
-                    width: dropdownRect.width,
-                    zIndex: 9999,
-                    background: 'var(--color-panel-solid)',
-                    border: '1px solid var(--gray-6)',
-                    borderRadius: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    marginTop: '2px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    outline: 'none',
-                }}
-            >
-                {suggestions.map((s, i) => (
-                    <div
-                        key={s}
-                        ref={el => { itemRefs.current[i] = el; }}
-                        onMouseDown={(e) => { e.preventDefault(); acceptSuggestion(s); }}
-                        style={{
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            background: i === selectedIndex ? 'var(--accent-3)' : 'transparent',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
-                        }}
-                    >
-                        <Text size="1">{s}</Text>
-                    </div>
-                ))}
-            </div>,
+            // <Theme asChild> is the same technique Radix's own Popover uses to
+            // inject the theme CSS-variable scope into a portal that lives outside
+            // the .radix-themes element in the DOM tree.
+            <Theme asChild>
+                <div
+                    ref={dropdownRef}
+                    tabIndex={-1}
+                    onKeyDown={handleDropdownKeyDown}
+                    style={{
+                        position: 'fixed',
+                        top: dropdownRect.top + 4,
+                        left: dropdownRect.left,
+                        width: dropdownRect.width,
+                        zIndex: 9999,
+                        // Radix panel appearance
+                        background: 'var(--color-panel-solid)',
+                        border: '1px solid var(--gray-a6)',
+                        borderRadius: 'var(--radius-3)',
+                        boxShadow: '0 4px 16px var(--black-a3), 0 1px 3px var(--black-a2)',
+                        padding: 'var(--space-1)',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        outline: 'none',
+                    }}
+                >
+                    {suggestions.map((s, i) => (
+                        <div
+                            key={s}
+                            ref={el => { itemRefs.current[i] = el; }}
+                            onMouseDown={e => { e.preventDefault(); acceptSuggestion(s); }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '0 var(--space-2)',
+                                height: 'var(--space-6)',
+                                borderRadius: 'var(--radius-2)',
+                                cursor: 'default',
+                                userSelect: 'none',
+                                background: i === selectedIndex ? 'var(--accent-9)' : 'transparent',
+                                color: i === selectedIndex ? 'var(--accent-contrast)' : 'var(--gray-12)',
+                            }}
+                        >
+                            <Text size="1" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0' }}>{s}</Text>
+                        </div>
+                    ))}
+                </div>
+            </Theme>,
             document.body
         )
         : null;
