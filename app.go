@@ -1126,9 +1126,9 @@ func (a *App) RunCollection(filePaths []string, envFilePath string, saveResponse
 		httpReq := HTTPRequest{
 			Method:      saved.Method,
 			URL:         saved.URL,
-			Headers:     saved.Headers,
+			Headers:     copyMap(saved.Headers), // defensive copy — MakeRequest mutates maps in-place
 			Body:        saved.Body,
-			Query:       saved.Query,
+			Query:       copyMap(saved.Query),   // same: map assignment copies the pointer, not the data
 			EnvFilePath: envFilePath,
 		}
 

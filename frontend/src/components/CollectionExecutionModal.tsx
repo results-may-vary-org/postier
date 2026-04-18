@@ -18,8 +18,8 @@ import { CollectionRunNode, type CollectionRunNodeData, type CollectionRunNodeTy
 // nodeTypes must live outside the component — React Flow re-registers on every render otherwise
 const NODE_TYPES = { requestCard: CollectionRunNode };
 
-const NODE_WIDTH  = 220;
-const NODE_HEIGHT = 120; // conservative estimate used by dagre for spacing
+const NODE_WIDTH  = 240;
+const NODE_HEIGHT = 90;
 
 /** Distinct colors assigned to independent dependency chains. */
 const CHAIN_COLORS = [
@@ -55,7 +55,7 @@ function buildLayoutedGraph(
     graph.setDefaultEdgeLabel(() => ({}));
     graph.setGraph({ rankdir: "LR", ranksep: 80, nodesep: 24 });
 
-    // Register nodes and collect raw edge pairs with dagre
+    // Register nodes and collect raw edge pairs
     const rawEdges: { source: string; target: string }[] = [];
     for (const depNode of order) {
         graph.setNode(depNode.filePath, { width: NODE_WIDTH, height: NODE_HEIGHT });
@@ -71,7 +71,6 @@ function buildLayoutedGraph(
     dagre.layout(graph);
 
     // ── Connected-component coloring ──────────────────────────────────────────
-    // Build undirected adjacency so we can group nodes into independent chains.
     const adj = new Map<string, Set<string>>();
     for (const { source, target } of rawEdges) {
         if (!adj.has(source)) adj.set(source, new Set());
@@ -96,19 +95,16 @@ function buildLayoutedGraph(
         componentCount++;
     }
 
-    // Only color when there are actual edges (isolated nodes stay uncolored).
     const hasEdges = rawEdges.length > 0;
     const chainColorByPath = new Map<string, string>();
     if (hasEdges) {
         for (const [path, idx] of componentByPath) {
-            // Only color nodes that are part of a connected edge (have neighbors).
             if (adj.has(path)) {
                 chainColorByPath.set(path, CHAIN_COLORS[idx % CHAIN_COLORS.length]);
             }
         }
     }
 
-    // Build React Flow edges with chain color applied.
     const edges: Edge[] = rawEdges.map(({ source, target }) => {
         const color = chainColorByPath.get(source) ?? "var(--gray-8)";
         return {
@@ -116,9 +112,8 @@ function buildLayoutedGraph(
             source,
             target,
             type: "smoothstep",
-            animated: false, // toggled via useEffect while running
+            animated: false,
             style: { stroke: color, strokeWidth: 1.5 },
-            // Keep the color for animated toggling
             data: { chainColor: color },
         };
     });
@@ -135,9 +130,6 @@ function buildLayoutedGraph(
                 result: undefined,
                 isRunning: false,
                 chainColor: chainColorByPath.get(depNode.filePath),
-                onCardClick: () => {}, // filled in via useEffect
-                onRerunAll: () => {},  // filled in via useEffect
-                onRerunOne: () => {},  // filled in via useEffect
             },
         };
     });
@@ -175,20 +167,17 @@ export function CollectionExecutionModal({
 }: CollectionExecutionModalProps) {
     const hasRun = results !== null;
 
-    // Stable click handler — passed into node data via useEffect to avoid re-layout
     const handleCardClick = useCallback((filePath: string) => {
         onSelectRequest(filePath);
         onClose();
     }, [onSelectRequest, onClose]);
 
-    // Build result lookup
     const resultByPath = useMemo(() => {
         const map = new Map<string, main.CollectionRunResult>();
-        results?.forEach(result => map.set(result.filePath, result));
+        results?.forEach(r => map.set(r.filePath, r));
         return map;
     }, [results]);
 
-    // Compute layout once per analysis order change
     const { nodes: initialNodes, edges: initialEdges } = useMemo(
         () => buildLayoutedGraph(analysis.order),
         [analysis.order],
@@ -197,16 +186,7 @@ export function CollectionExecutionModal({
     const [rfNodes, setRfNodes, onNodesChange] = useNodesState<CollectionRunNodeType>(initialNodes as CollectionRunNodeType[]);
     const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-    const handleRerunAll = useCallback(
-        () => onExecute(analysis.order.map(node => node.filePath)),
-        [onExecute, analysis.order],
-    );
-    const handleRerunOne = useCallback(
-        (filePath: string) => onExecute([filePath]),
-        [onExecute],
-    );
-
-    // Sync dynamic data into nodes without triggering a re-layout
+    // Sync result data and running state into nodes without triggering a re-layout
     useEffect(() => {
         setRfNodes(nodes =>
             nodes.map(node => ({
@@ -215,13 +195,10 @@ export function CollectionExecutionModal({
                     ...node.data,
                     result: resultByPath.get(node.id),
                     isRunning,
-                    onCardClick: handleCardClick,
-                    onRerunAll: handleRerunAll,
-                    onRerunOne: handleRerunOne,
                 },
             })),
         );
-    }, [results, isRunning, resultByPath, handleCardClick, handleRerunAll, handleRerunOne, setRfNodes]);
+    }, [results, isRunning, resultByPath, setRfNodes]);
 
     // Animate edges while running — preserve the per-chain stroke color
     useEffect(() => {
@@ -254,22 +231,19 @@ export function CollectionExecutionModal({
                 }}
             >
                 {/* Header */}
-                <Flex justify="between" align="start" mb="2">
+                <Flex justify="between" align="center" mb="2">
                     <Flex direction="column" gap="1">
                         <Dialog.Title mb="0">
                             Run collection — {collectionName}
                         </Dialog.Title>
                         <Text size="2" color="gray">
                             {analysis.order.length} request{analysis.order.length !== 1 ? "s" : ""}
-                            {" · click to open · right-click for options · drag to reposition · Space/middle-drag to pan"}
                         </Text>
                     </Flex>
 
-                    {!hasRun && (
-                        <Button onClick={handleExecute} loading={isRunning} disabled={isRunning}>
-                            Execute all →
-                        </Button>
-                    )}
+                    <Button onClick={handleExecute} loading={isRunning} disabled={isRunning}>
+                        Execute all →
+                    </Button>
                 </Flex>
 
                 <Separator size="4" mb="3" />
@@ -284,13 +258,9 @@ export function CollectionExecutionModal({
                         nodeTypes={NODE_TYPES}
                         fitView
                         fitViewOptions={{ padding: 0.15 }}
-                        // Clicking a card body opens the request; React Flow won't fire onNodeClick
-                        // after a drag so the distinction is handled automatically.
                         onNodeClick={(_, node) => handleCardClick(node.id)}
                         nodesConnectable={false}
                         elementsSelectable={false}
-                        // Middle-button drag or Space+left-drag pans the viewport;
-                        // plain left-drag is reserved for moving individual cards.
                         panOnDrag={[1]}
                         panActivationKeyCode="Space"
                         proOptions={{ hideAttribution: true }}

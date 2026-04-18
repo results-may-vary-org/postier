@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AnalyzeCollectionDependencies, RunCollection } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { useCollectionStore } from "../stores/store";
@@ -30,7 +30,7 @@ function collectFilePaths(tree: DirectoryTree): string[] {
  * Manages the entire collection-run lifecycle:
  * dependency analysis → execution plan modal → run → inline results.
  *
- * Extract this concern out of FileTree so that component only handles file-browsing UI.
+ * Extracted from FileTree so that component only handles file-browsing UI.
  */
 export function useCollectionRun() {
     const { autoSave } = useCollectionStore();
@@ -42,8 +42,16 @@ export function useCollectionRun() {
     const [isRunning, setIsRunning] = useState(false);
 
     /**
+     * In-memory cache of the last successful run results per collection path.
+     * Persists across modal open/close cycles within the same app session.
+     * Keyed by collection path so multiple collections don't share state.
+     */
+    const lastRunCache = useRef<Map<string, main.CollectionRunResult[]>>(new Map());
+
+    /**
      * Entry point: triggered by the "Run All" button.
      * Analyses dependencies and opens the execution modal, or surfaces an error.
+     * Pre-populates results from the in-memory cache so the last run is visible immediately.
      */
     const analyzeAndOpen = async (collection: { name: string; path: string; tree: DirectoryTree }) => {
         const filePaths = collectFilePaths(collection.tree);
@@ -57,7 +65,13 @@ export function useCollectionRun() {
             } else if (analysis.hasCycle) {
                 setCycleError({ collectionName: collection.name, cycleNames: analysis.cycleNames ?? [] });
             } else {
-                setExecutionModal({ collectionName: collection.name, collectionPath: collection.path, analysis, results: null });
+                const cached = lastRunCache.current.get(collection.path) ?? null;
+                setExecutionModal({
+                    collectionName: collection.name,
+                    collectionPath: collection.path,
+                    analysis,
+                    results: cached,
+                });
             }
         } catch (err) {
             console.error('Dependency analysis failed:', err);
@@ -67,17 +81,33 @@ export function useCollectionRun() {
     };
 
     /**
-     * Triggered by "Execute all →" inside the execution modal.
-     * Runs the collection in the resolved order and stores results back into the modal state.
+     * Triggered by "Execute all →" or a re-run action inside the execution modal.
+     * Merges new results into existing ones by filePath so that re-running a single
+     * request doesn't wipe results for the other cards.
      */
     const execute = async (orderedFilePaths: string[]) => {
         if (!executionModal) return;
         setIsRunning(true);
         try {
-            const results = await RunCollection(orderedFilePaths, executionModal.collectionPath, autoSave);
-            setExecutionModal(previous => previous ? { ...previous, results } : null);
+            const newResults = await RunCollection(orderedFilePaths, executionModal.collectionPath, autoSave);
+            setExecutionModal(previous => {
+                if (!previous) return null;
+                // Merge: keep existing results, replace/append updated ones
+                const merged = [...(previous.results ?? [])];
+                for (const r of newResults) {
+                    const idx = merged.findIndex(x => x.filePath === r.filePath);
+                    if (idx >= 0) merged[idx] = r; else merged.push(r);
+                }
+                // Update the cache so the next modal open pre-populates with these results
+                lastRunCache.current.set(previous.collectionPath, merged);
+                return { ...previous, results: merged };
+            });
             if (autoSave) {
                 window.dispatchEvent(new CustomEvent('postier-collection-refresh'));
+                // Reload the open editor if one of the saved files is currently open
+                for (const fp of orderedFilePaths) {
+                    window.dispatchEvent(new CustomEvent('postier-load-file', { detail: { filePath: fp } }));
+                }
             }
         } catch (err) {
             console.error('Collection run failed:', err);
