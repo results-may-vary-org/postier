@@ -179,7 +179,7 @@ code {
   border-bottom: 1px solid transparent;
 }
 .nav.scrolled {
-  background: rgba(247, 242, 235, 0.94);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom-color: var(--border);
@@ -565,6 +565,7 @@ code {
   padding: 1.25rem 1.5rem;
   font-size: 0.875rem;
   font-weight: 600;
+  color: var(--sand);
   background: var(--surface);
   transition: background 0.15s, color 0.15s;
   cursor: default;
@@ -585,6 +586,188 @@ code {
 @media (max-width: 900px) {
   .themes__inner { grid-template-columns: 1fr; }
   .themes__grid  { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* =============================================
+   THEME PREVIEW — smooth transitions for :has() var swaps
+   ============================================= */
+
+body,
+.nav,
+.strip,
+.hero,
+.features,
+.spotlight,
+.themes,
+.cta,
+.footer,
+.feature-card,
+.theme-chip,
+.section-title,
+.section-sub,
+.label,
+.nav__links a,
+.btn,
+.footer__logo,
+.footer__col a,
+.footer__tagline,
+.footer__bottom {
+  transition:
+    background 0.4s ease,
+    background-color 0.4s ease,
+    color 0.4s ease,
+    border-color 0.4s ease;
+}
+
+/* =============================================
+   THEME PREVIEW — :has() overrides per chip
+   ============================================= */
+
+/* Catppuccin Mocha */
+body:has(.theme-chip--mocha:hover) {
+  --bg:        #1e1e2e;
+  --surface:   #181825;
+  --surface-2: #313244;
+  --border:    #45475a;
+  --border-hi: #585b70;
+  --sand:      #cdd6f4;
+  --sand-dim:  #bac2de;
+  --text-dim:  #a6adc8;
+  --amber:     #fab387;
+  --on-amber:  #1e1e2e;
+  --red:       #f38ba8;
+  --green:     #a6e3a1;
+  --blue:      #89b4fa;
+  --old-red:   #f38ba8;
+  --old-amber: #fab387;
+  --old-green: #a6e3a1;
+  --old-blue:  #89b4fa;
+}
+
+/* Catppuccin Macchiato */
+body:has(.theme-chip--macchiato:hover) {
+  --bg:        #24273a;
+  --surface:   #1e2030;
+  --surface-2: #363a4f;
+  --border:    #494d64;
+  --border-hi: #5b6078;
+  --sand:      #cad3f5;
+  --sand-dim:  #b8c0e0;
+  --text-dim:  #a5adcb;
+  --amber:     #f5a97f;
+  --on-amber:  #24273a;
+  --red:       #ed8796;
+  --green:     #a6da95;
+  --blue:      #8aadf4;
+  --old-red:   #ed8796;
+  --old-amber: #f5a97f;
+  --old-green: #a6da95;
+  --old-blue:  #8aadf4;
+}
+
+/* Catppuccin Frappé */
+body:has(.theme-chip--frappe:hover) {
+  --bg:        #303446;
+  --surface:   #292c3c;
+  --surface-2: #414559;
+  --border:    #51576d;
+  --border-hi: #626880;
+  --sand:      #c6d0f5;
+  --sand-dim:  #b5bfe2;
+  --text-dim:  #a5adce;
+  --amber:     #ef9f76;
+  --on-amber:  #303446;
+  --red:       #e78284;
+  --green:     #a6d189;
+  --blue:      #8caaee;
+  --old-red:   #e78284;
+  --old-amber: #ef9f76;
+  --old-green: #a6d189;
+  --old-blue:  #8caaee;
+}
+
+/* Catppuccin Latte */
+body:has(.theme-chip--latte:hover) {
+  --bg:        #eff1f5;
+  --surface:   #e6e9ef;
+  --surface-2: #ccd0da;
+  --border:    #bcc0cc;
+  --border-hi: #acb0be;
+  --sand:      #4c4f69;
+  --sand-dim:  #5c5f77;
+  --text-dim:  #6c6f85;
+  --amber:     #fe640b;
+  --on-amber:  #eff1f5;
+  --red:       #d20f39;
+  --green:     #40a02b;
+  --blue:      #1e66f5;
+  --old-red:   #d20f39;
+  --old-amber: #fe640b;
+  --old-green: #40a02b;
+  --old-blue:  #1e66f5;
+}
+
+/* Rosé Pine */
+body:has(.theme-chip--rose:hover) {
+  --bg:        #191724;
+  --surface:   #1f1d2e;
+  --surface-2: #26233a;
+  --border:    #403d52;
+  --border-hi: #524f67;
+  --sand:      #e0def4;
+  --sand-dim:  #908caa;
+  --text-dim:  #6e6a86;
+  --amber:     #f6c177;
+  --on-amber:  #191724;
+  --red:       #eb6f92;
+  --green:     #31748f;
+  --blue:      #9ccfd8;
+  --old-red:   #eb6f92;
+  --old-amber: #f6c177;
+  --old-green: #31748f;
+  --old-blue:  #9ccfd8;
+}
+
+/* Rosé Pine Moon */
+body:has(.theme-chip--moon:hover) {
+  --bg:        #232136;
+  --surface:   #2a273f;
+  --surface-2: #393552;
+  --border:    #44415a;
+  --border-hi: #56526e;
+  --sand:      #e0def4;
+  --sand-dim:  #908caa;
+  --text-dim:  #6e6a86;
+  --amber:     #f6c177;
+  --on-amber:  #232136;
+  --red:       #eb6f92;
+  --green:     #3e8fb0;
+  --blue:      #9ccfd8;
+  --old-red:   #eb6f92;
+  --old-amber: #f6c177;
+  --old-green: #3e8fb0;
+  --old-blue:  #9ccfd8;
+}
+
+/* Rosé Pine Dawn */
+body:has(.theme-chip--dawn:hover) {
+  --bg:        #faf4ed;
+  --surface:   #fffaf3;
+  --surface-2: #f2e9de;
+  --border:    #dfdad9;
+  --border-hi: #cecacd;
+  --sand:      #575279;
+  --sand-dim:  #797593;
+  --text-dim:  #9893a5;
+  --amber:     #ea9d34;
+  --on-amber:  #faf4ed;
+  --red:       #b4637a;
+  --green:     #286983;
+  --blue:      #56949f;
+  --old-red:   #b4637a;
+  --old-amber: #ea9d34;
+  --old-green: #286983;
+  --old-blue:  #56949f;
 }
 
 /* =============================================
