@@ -739,19 +739,30 @@ type DirectoryTree struct {
 	Children []DirectoryTree `json:"children,omitempty"`
 }
 
+// KeyValueEntry is a header or query parameter entry with an enabled/disabled flag.
+// It is the canonical storage format in saved .postier files; the legacy
+// map[string]string fields (Headers / Query) are kept for reading old files.
+type KeyValueEntry struct {
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+	Enabled bool   `json:"enabled"`
+}
+
 // PostierRequest represents a saved request in .postier format
 type PostierRequest struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Method      string            `json:"method"`
-	URL         string            `json:"url"`
-	Headers     map[string]string `json:"headers"`
-	Body        string            `json:"body"`
-	BodyType    string            `json:"bodyType"`
-	Query       map[string]string `json:"query"`
-	Response    *HTTPResponse     `json:"response,omitempty"`
-	CreatedAt   time.Time         `json:"createdAt"`
-	UpdatedAt   time.Time         `json:"updatedAt"`
+	Name          string            `json:"name"`
+	Description   string            `json:"description"`
+	Method        string            `json:"method"`
+	URL           string            `json:"url"`
+	Headers       map[string]string `json:"headers"`
+	Body          string            `json:"body"`
+	BodyType      string            `json:"bodyType"`
+	Query         map[string]string `json:"query"`
+	HeaderEntries []KeyValueEntry   `json:"headerEntries,omitempty"`
+	QueryEntries  []KeyValueEntry   `json:"queryEntries,omitempty"`
+	Response      *HTTPResponse     `json:"response,omitempty"`
+	CreatedAt     time.Time         `json:"createdAt"`
+	UpdatedAt     time.Time         `json:"updatedAt"`
 }
 
 // GetDirectoryTree returns the directory structure for a given path
