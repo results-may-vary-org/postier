@@ -1,6 +1,6 @@
 {
-  "name": "GET@api.openbrewerydb.org/v1/breweries",
-  "description": "List breweries using env vars. {{API_KEY}} is injected into the X-Api-Key header — its value is masked in the UI because the key name contains 'key'. In this demo the Brewery API does not require authentication, but this shows the pattern for APIs that do.",
+  "name": "GET@{{BREWERY_API_URL}}/breweries",
+  "description": "",
   "method": "GET",
   "url": "{{BREWERY_API_URL}}/breweries",
   "headers": {
@@ -11,6 +11,154 @@
   "query": {
     "per_page": "{{PER_PAGE}}"
   },
-  "createdAt": "2026-04-18T00:00:00Z",
-  "updatedAt": "2026-04-18T00:00:00Z"
+  "response": {
+    "statusCode": 200,
+    "status": "200 OK",
+    "headers": {
+      "Alt-Svc": [
+        "h3=\":443\"; ma=86400"
+      ],
+      "Cache-Control": [
+        "etag, max-age=300, public"
+      ],
+      "Cf-Cache-Status": [
+        "BYPASS"
+      ],
+      "Cf-Ray": [
+        "9ef322084a0f6cc8-CDG"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Date": [
+        "Mon, 20 Apr 2026 09:30:54 GMT"
+      ],
+      "Last-Modified": [
+        "Mon, 20 Apr 2026 09:30:54 GMT"
+      ],
+      "Nel": [
+        "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      ],
+      "Referrer-Policy": [
+        "strict-origin-when-cross-origin"
+      ],
+      "Report-To": [
+        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=bm325AV5hrucQOp4EYRN%2BOw5L6KmNvoGy4gQ%2FOYfmUPuDTBA5SEpY2Y5ADtQMtUoglo9cijMpDwh2rWrhZPX3%2BGduhdASMDVo7700y54CD5b3FjGujh9z3HbtE1vAePDk%2BvbsLcpfBI%3D\"}]}"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Server-Timing": [
+        "cfCacheStatus;desc=\"BYPASS\"",
+        "cfEdge;dur=19,cfOrigin;dur=455"
+      ],
+      "Set-Cookie": [
+        "__cf_bm=_pYC9plmekzNJe0wwCnrxpNYXOGHzCP9b1AMU6yWqBc-1776677454.1407254-1.0.1.1-uXhZxgKnOuycfOzQPGjCx53eDyWVLkGkRksOyeoj1lWtAw7zsBkmD78MD3DDDtnrmxjHpQ1_EpPhnyb_l4DEPaUZzCDyplBKOT7DxW0EgmY4L06P01OqTIbJ6m_Tg_OW; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Mon, 20 Apr 2026 10:00:54 GMT"
+      ],
+      "Strict-Transport-Security": [
+        "max-age=31536000; includeSubDomains"
+      ],
+      "Vary": [
+        "Accept-Encoding,Origin"
+      ],
+      "X-Content-Type-Options": [
+        "nosniff"
+      ],
+      "X-Do-App-Origin": [
+        "67ba9744-8641-488d-8d6d-ec79fa2d19d8"
+      ],
+      "X-Do-Orig-Status": [
+        "200"
+      ],
+      "X-Frame-Options": [
+        "SAMEORIGIN"
+      ],
+      "X-Ratelimit-Limit": [
+        "120"
+      ],
+      "X-Ratelimit-Remaining": [
+        "112"
+      ]
+    },
+    "cookies": [
+      {
+        "name": "__cf_bm",
+        "value": "_pYC9plmekzNJe0wwCnrxpNYXOGHzCP9b1AMU6yWqBc-1776677454.1407254-1.0.1.1-uXhZxgKnOuycfOzQPGjCx53eDyWVLkGkRksOyeoj1lWtAw7zsBkmD78MD3DDDtnrmxjHpQ1_EpPhnyb_l4DEPaUZzCDyplBKOT7DxW0EgmY4L06P01OqTIbJ6m_Tg_OW",
+        "domain": "api.openbrewerydb.org",
+        "path": "/",
+        "expires": "2026-04-20T10:00:54Z",
+        "secure": true,
+        "httpOnly": true
+      }
+    ],
+    "body": "[{\"id\":\"5128df48-79fc-4f0f-8b52-d06be54d0cec\",\"name\":\"(405) Brewing Co\",\"brewery_type\":\"micro\",\"address_1\":\"1716 Topeka St\",\"address_2\":null,\"address_3\":null,\"city\":\"Norman\",\"state_province\":\"Oklahoma\",\"postal_code\":\"73069-8224\",\"country\":\"United States\",\"longitude\":-97.46818222,\"latitude\":35.25738891,\"phone\":\"4058160490\",\"website_url\":\"http:\\/\\/www.405brewing.com\",\"state\":\"Oklahoma\",\"street\":\"1716 Topeka St\"},{\"id\":\"9c5a66c8-cc13-416f-a5d9-0a769c87d318\",\"name\":\"(512) Brewing Co\",\"brewery_type\":\"micro\",\"address_1\":\"407 Radam Ln Ste F200\",\"address_2\":null,\"address_3\":null,\"city\":\"Austin\",\"state_province\":\"Texas\",\"postal_code\":\"78745-1197\",\"country\":\"United States\",\"longitude\":null,\"latitude\":null,\"phone\":\"5129211545\",\"website_url\":\"http:\\/\\/www.512brewing.com\",\"state\":\"Texas\",\"street\":\"407 Radam Ln Ste F200\"},{\"id\":\"34e8c68b-6146-453f-a4b9-1f6cd99a5ada\",\"name\":\"1 of Us Brewing Company\",\"brewery_type\":\"micro\",\"address_1\":\"8100 Washington Ave\",\"address_2\":null,\"address_3\":null,\"city\":\"Mount Pleasant\",\"state_province\":\"Wisconsin\",\"postal_code\":\"53406-3920\",\"country\":\"United States\",\"longitude\":-87.883363502094,\"latitude\":42.720108268996,\"phone\":\"2624847553\",\"website_url\":\"https:\\/\\/www.1ofusbrewing.com\",\"state\":\"Wisconsin\",\"street\":\"8100 Washington Ave\"},{\"id\":\"6d14b220-8926-4521-8d19-b98a2d6ec3db\",\"name\":\"10 Barrel Brewing Co\",\"brewery_type\":\"large\",\"address_1\":\"62970 18th St\",\"address_2\":null,\"address_3\":null,\"city\":\"Bend\",\"state_province\":\"Oregon\",\"postal_code\":\"97701-9847\",\"country\":\"United States\",\"longitude\":-121.281706,\"latitude\":44.08683531,\"phone\":\"5415851007\",\"website_url\":\"http:\\/\\/www.10barrel.com\",\"state\":\"Oregon\",\"street\":\"62970 18th St\"},{\"id\":\"e2e78bd8-80ff-4a61-a65c-3bfbd9d76ce2\",\"name\":\"10 Barrel Brewing Co\",\"brewery_type\":\"large\",\"address_1\":\"1135 NW Galveston Ave Ste B\",\"address_2\":null,\"address_3\":null,\"city\":\"Bend\",\"state_province\":\"Oregon\",\"postal_code\":\"97703-2465\",\"country\":\"United States\",\"longitude\":-121.3288021,\"latitude\":44.0575649,\"phone\":\"5415851007\",\"website_url\":null,\"state\":\"Oregon\",\"street\":\"1135 NW Galveston Ave Ste B\"}]",
+    "size": 2088,
+    "duration": 639797,
+    "raw": {
+      "method": "GET",
+      "url": "%7B%7BBREWERY_API_URL%7D%7D/breweries?per_page=%7B%7BPER_PAGE%7D%7D",
+      "headers": {
+        "X-Api-Key": "{{API_KEY}}"
+      },
+      "body": ""
+    },
+    "effective": {
+      "method": "GET",
+      "url": "https://api.openbrewerydb.org/v1/breweries?per_page=5",
+      "headers": {
+        "X-Api-Key": "my-secret-api-key"
+      },
+      "body": ""
+    },
+    "trace": {
+      "logs": [
+        "[09:30:53.959Z] Preparing request to https://api.openbrewerydb.org/v1/breweries",
+        "[09:30:53.959Z] GET https://api.openbrewerydb.org/v1/breweries",
+        "[09:30:53.959Z] DNS lookup: api.openbrewerydb.org",
+        "[09:30:54.005Z] DNS lookup: api.openbrewerydb.org -\u003e 104.21.69.63",
+        "[09:30:54.005Z] DNS lookup: api.openbrewerydb.org -\u003e 172.67.205.208",
+        "[09:30:54.005Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3032::ac43:cdd0",
+        "[09:30:54.005Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3030::6815:453f",
+        "[09:30:54.005Z] Trying 104.21.69.63:443... (tcp)",
+        "[09:30:54.024Z] Connected to api.openbrewerydb.org (104.21.69.63:443)",
+        "[09:30:54.024Z] TLS handshake started",
+        "[09:30:54.105Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
+        "[09:30:54.105Z] Server certificate:",
+        "[09:30:54.105Z]   subject: CN=api.openbrewerydb.org",
+        "[09:30:54.105Z]   start date: Mar 20 17:44:40 2026 GMT",
+        "[09:30:54.105Z]   expire date: Jun 18 18:44:34 2026 GMT",
+        "[09:30:54.105Z]   issuer: WE1",
+        "[09:30:54.599Z] HTTP/2.0 200 OK",
+        "[09:30:54.599Z] Request completed in 639 ms"
+      ],
+      "timings": [
+        {
+          "label": "DNS Lookup",
+          "duration": 45
+        },
+        {
+          "label": "TCP Connect",
+          "duration": 19
+        },
+        {
+          "label": "TLS Handshake",
+          "duration": 80
+        },
+        {
+          "label": "Waiting (TTFB)",
+          "duration": 493
+        },
+        {
+          "label": "Transfer",
+          "duration": 0
+        },
+        {
+          "label": "Total",
+          "duration": 639
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-04-19T10:20:28.289Z",
+  "updatedAt": "2026-04-20T11:30:54.599130173+02:00"
 }

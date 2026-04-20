@@ -12,7 +12,7 @@
     "status": "200 OK",
     "headers": {
       "Age": [
-        "2236"
+        "47300"
       ],
       "Alt-Svc": [
         "h3=\":443\"; ma=86400"
@@ -24,16 +24,16 @@
         "BYPASS"
       ],
       "Cf-Ray": [
-        "9ee694a9faacf164-CDG"
+        "9ef3221f7a04d085-CDG"
       ],
       "Content-Type": [
         "application/json"
       ],
       "Date": [
-        "Sat, 18 Apr 2026 20:57:14 GMT"
+        "Mon, 20 Apr 2026 09:30:57 GMT"
       ],
       "Last-Modified": [
-        "Sat, 18 Apr 2026 20:19:57 GMT"
+        "Sun, 19 Apr 2026 20:22:37 GMT"
       ],
       "Nel": [
         "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
@@ -42,17 +42,17 @@
         "strict-origin-when-cross-origin"
       ],
       "Report-To": [
-        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=27NTRb747mUHu5DgO1BtDLlPdqC5Vb%2BYyHs687vePZ%2FaBTfNd0%2BaPfaFgHtEzWrmMVK2M246MSCZrvdYB%2BRgzn%2FBMRuw1pF7N0Q7jBuxMPiYjJZ7zg5dMyN2Zql%2B05a8Vec3FH59zONWkWFHSaZCW5Y3X78%3D\"}]}"
+        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=7RR6UEHhE0fIwmqPChCb2M6BIzbwu%2Fb6rR93XyuZWkiFDL31ne0i8uZLWJiXfDffMSv5uZ0iyoESjpQvqyqlqRXfh8t2o967B3YDrclrBtBL9GW5XlfN30Ot3e0z8rfMdYDd9emHXD8%3D\"}]}"
       ],
       "Server": [
         "cloudflare"
       ],
       "Server-Timing": [
         "cfCacheStatus;desc=\"BYPASS\"",
-        "cfEdge;dur=10,cfOrigin;dur=8"
+        "cfEdge;dur=14,cfOrigin;dur=10"
       ],
       "Set-Cookie": [
-        "__cf_bm=2_nbK5y1Ld95VCpzJ6Stc0YrZJ9XEPIvPm6wmBm_CI8-1776545834.5634155-1.0.1.1-QqxbM39b0vg0G5yzal2sBvs2Q2LTidkJT2UGPppQMx4kWHhshPXA1G1hC_cqx0Gu4eM55CLHlrVVU5Box4tH7tIj_Jg_v5ra5Gx36pGfe9ePD6vAhiYoPTHPqnRJjz.B; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Sat, 18 Apr 2026 21:27:14 GMT"
+        "__cf_bm=byCc3UHgzDyqpCmWjETQiXZ6TDJQ13PSCb6.aqBds1Q-1776677457.851556-1.0.1.1-aRmntf6jDWZ.T_ZO0ogpWkIPVBwMsKwUtYILZ7jhjG368kaRkUP8AjLaWx4_Z.wGt26Dfmu_PzShodtdacHrvmdozZ.fAe5Su.58NOPnFz2peujR7tN6kFdTE89LBx.d; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Mon, 20 Apr 2026 10:00:57 GMT"
       ],
       "Strict-Transport-Security": [
         "max-age=31536000; includeSubDomains"
@@ -76,23 +76,23 @@
         "120"
       ],
       "X-Ratelimit-Remaining": [
-        "119"
+        "108"
       ]
     },
     "cookies": [
       {
         "name": "__cf_bm",
-        "value": "2_nbK5y1Ld95VCpzJ6Stc0YrZJ9XEPIvPm6wmBm_CI8-1776545834.5634155-1.0.1.1-QqxbM39b0vg0G5yzal2sBvs2Q2LTidkJT2UGPppQMx4kWHhshPXA1G1hC_cqx0Gu4eM55CLHlrVVU5Box4tH7tIj_Jg_v5ra5Gx36pGfe9ePD6vAhiYoPTHPqnRJjz.B",
+        "value": "byCc3UHgzDyqpCmWjETQiXZ6TDJQ13PSCb6.aqBds1Q-1776677457.851556-1.0.1.1-aRmntf6jDWZ.T_ZO0ogpWkIPVBwMsKwUtYILZ7jhjG368kaRkUP8AjLaWx4_Z.wGt26Dfmu_PzShodtdacHrvmdozZ.fAe5Su.58NOPnFz2peujR7tN6kFdTE89LBx.d",
         "domain": "api.openbrewerydb.org",
         "path": "/",
-        "expires": "2026-04-18T21:27:14Z",
+        "expires": "2026-04-20T10:00:57Z",
         "secure": true,
         "httpOnly": true
       }
     ],
     "body": "{\"id\":\"78c50e54-34e3-415d-9574-ac0cc0505113\",\"name\":\"Dog \u0026 Pony Alehouse and Grill\",\"brewery_type\":\"closed\",\"address_1\":\"351 Park Ave N\",\"address_2\":null,\"address_3\":null,\"city\":\"Renton\",\"state_province\":\"Washington\",\"postal_code\":\"98057-5716\",\"country\":\"United States\",\"longitude\":-122.2023129,\"latitude\":47.48758261,\"phone\":\"4252548080\",\"website_url\":\"http:\\/\\/www.thedogandpony.com\",\"state\":\"Washington\",\"street\":\"351 Park Ave N\"}",
     "size": 433,
-    "duration": 75288,
+    "duration": 118734,
     "raw": {
       "method": "GET",
       "url": "https://api.openbrewerydb.org/v1/breweries/%7B%7B@search-breweries%7Cbody%5B0%5D.id%7D%7D",
@@ -107,41 +107,41 @@
     },
     "trace": {
       "logs": [
-        "[20:57:14.536Z] Preparing request to https://api.openbrewerydb.org/v1/breweries/78c50e54-34e3-415d-9574-ac0cc0505113",
-        "[20:57:14.536Z] GET https://api.openbrewerydb.org/v1/breweries/78c50e54-34e3-415d-9574-ac0cc0505113",
-        "[20:57:14.536Z] DNS lookup: api.openbrewerydb.org",
-        "[20:57:14.538Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3120::2",
-        "[20:57:14.538Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3121::2",
-        "[20:57:14.538Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.96.2",
-        "[20:57:14.538Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.97.2",
-        "[20:57:14.538Z] Trying [2a06:98c1:3120::2]:443... (tcp)",
-        "[20:57:14.550Z] Connected to api.openbrewerydb.org ([2a06:98c1:3120::2]:443)",
-        "[20:57:14.550Z] TLS handshake started",
-        "[20:57:14.577Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
-        "[20:57:14.577Z] Server certificate:",
-        "[20:57:14.577Z]   subject: CN=api.openbrewerydb.org",
-        "[20:57:14.577Z]   start date: Mar 20 17:44:40 2026 GMT",
-        "[20:57:14.577Z]   expire date: Jun 18 18:44:34 2026 GMT",
-        "[20:57:14.577Z]   issuer: WE1",
-        "[20:57:14.610Z] HTTP/2.0 200 OK",
-        "[20:57:14.611Z] Request completed in 75 ms"
+        "[09:30:57.745Z] Preparing request to https://api.openbrewerydb.org/v1/breweries/78c50e54-34e3-415d-9574-ac0cc0505113",
+        "[09:30:57.745Z] GET https://api.openbrewerydb.org/v1/breweries/78c50e54-34e3-415d-9574-ac0cc0505113",
+        "[09:30:57.745Z] DNS lookup: api.openbrewerydb.org",
+        "[09:30:57.768Z] DNS lookup: api.openbrewerydb.org -\u003e 172.67.205.208",
+        "[09:30:57.768Z] DNS lookup: api.openbrewerydb.org -\u003e 104.21.69.63",
+        "[09:30:57.768Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3030::6815:453f",
+        "[09:30:57.768Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3032::ac43:cdd0",
+        "[09:30:57.768Z] Trying 172.67.205.208:443... (tcp)",
+        "[09:30:57.790Z] Connected to api.openbrewerydb.org (172.67.205.208:443)",
+        "[09:30:57.790Z] TLS handshake started",
+        "[09:30:57.822Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
+        "[09:30:57.822Z] Server certificate:",
+        "[09:30:57.822Z]   subject: CN=api.openbrewerydb.org",
+        "[09:30:57.822Z]   start date: Mar 20 17:44:40 2026 GMT",
+        "[09:30:57.822Z]   expire date: Jun 18 18:44:34 2026 GMT",
+        "[09:30:57.822Z]   issuer: WE1",
+        "[09:30:57.863Z] HTTP/2.0 200 OK",
+        "[09:30:57.863Z] Request completed in 118 ms"
       ],
       "timings": [
         {
           "label": "DNS Lookup",
-          "duration": 2
+          "duration": 22
         },
         {
           "label": "TCP Connect",
-          "duration": 11
+          "duration": 21
         },
         {
           "label": "TLS Handshake",
-          "duration": 26
+          "duration": 32
         },
         {
           "label": "Waiting (TTFB)",
-          "duration": 33
+          "duration": 41
         },
         {
           "label": "Transfer",
@@ -149,11 +149,11 @@
         },
         {
           "label": "Total",
-          "duration": 75
+          "duration": 118
         }
       ]
     }
   },
   "createdAt": "2026-04-18T00:00:00Z",
-  "updatedAt": "2026-04-18T22:57:14.61107571+02:00"
+  "updatedAt": "2026-04-20T11:30:57.86391969+02:00"
 }
