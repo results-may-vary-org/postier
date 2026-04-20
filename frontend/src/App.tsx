@@ -44,7 +44,7 @@ function AppInner() {
     const all = [...BUILTIN_THEMES, ...userThemes];
     const theme = all.find(t => t.id === selectedThemeId) ?? defaultTheme;
     applyTheme(theme);
-    setTheme(theme.id === 'default' ? 'system' : theme.appearance);
+    setTheme(theme.id === 'radix' ? 'system' : theme.appearance);
   }, [selectedThemeId, userThemes]);
 
   return (

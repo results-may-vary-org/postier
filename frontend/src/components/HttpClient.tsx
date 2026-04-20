@@ -28,7 +28,7 @@ import { toHTTP, toCurl, toWget, toHTTPie } from "../utils/requestFormatters";
 import { FileEntry } from "../utils/jsonPaths";
 import { InterpolationField } from "./InterpolationField";
 
-const VALID_BODY_TYPES: BodyType[] = ['json', 'text', 'none', 'xml', 'sparql'];
+const VALID_BODY_TYPES: BodyType[] = ['json', 'text', 'none', 'xml', 'sparql', 'raw'];
 
 /** Props accepted by the HttpClient component */
 interface HttpClientProps {
@@ -688,6 +688,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
                   <Select.Item value="text">Text</Select.Item>
                   <Select.Item value="xml">XML</Select.Item>
                   <Select.Item value="sparql">SPARQL</Select.Item>
+                  <Select.Item value="raw">Raw</Select.Item>
                 </Select.Content>
               </Select.Root>
             </Box>
@@ -815,6 +816,10 @@ function TimingBreakdown({ timings }: { timings: main.TimingPhase[] }) {
   // Each phase row ~24px + 8px gap ≈ 160px total — use that as the cap.
   const ONE_HOP_HEIGHT = 170;
 
+  // Waterfall rendering: each bar is offset by the sum of all preceding phases.
+  // Redirect separators (↳) don't consume time in the total so they don't shift the offset.
+  let cumulative = 0;
+
   return (
     <Flex direction="column" gap="2">
       <Text size="1" weight="bold" color="gray">Timing Breakdown</Text>
@@ -835,20 +840,24 @@ function TimingBreakdown({ timings }: { timings: main.TimingPhase[] }) {
               </Flex>
             );
           }
+
+          const offsetPct = Math.min(100, (cumulative / total) * 100);
+          const widthPct  = Math.max(2, Math.min(100 - offsetPct, (phase.duration / total) * 100));
+          const endPct    = Math.min(100, offsetPct + widthPct);
+          const color     = phaseColor[phase.label] ?? 'var(--accent-9)';
+          cumulative += phase.duration;
+
           return (
             <Flex key={phase.label} direction="column" gap="1">
               <Flex justify="between">
                 <Text size="1">{phase.label}</Text>
                 <Text size="1" color="gray">{phase.duration} ms</Text>
               </Flex>
-              <Box style={{ height: '4px', background: 'var(--gray-a4)', borderRadius: '2px' }}>
-                <Box style={{
-                  height: '100%',
-                  width: `${Math.max(2, Math.min(100, (phase.duration / total) * 100))}%`,
-                  background: phaseColor[phase.label] ?? 'var(--accent-9)',
-                  borderRadius: '2px',
-                }} />
-              </Box>
+              <Box style={{
+                height: '4px',
+                borderRadius: '2px',
+                background: `linear-gradient(to right, var(--gray-a4) ${offsetPct}%, ${color} ${offsetPct}%, ${color} ${endPct}%, var(--gray-a4) ${endPct}%)`,
+              }} />
             </Flex>
           );
         })}

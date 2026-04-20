@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { Button, Dialog, Flex, Separator, Text } from "@radix-ui/themes";
+import { useTheme } from "next-themes";
 import {
     ReactFlow,
     Background,
@@ -166,6 +167,7 @@ export function CollectionExecutionModal({
     onSelectRequest,
 }: CollectionExecutionModalProps) {
     const hasRun = results !== null;
+    const { resolvedTheme } = useTheme();
 
     const handleCardClick = useCallback((filePath: string) => {
         onSelectRequest(filePath);
@@ -256,6 +258,7 @@ export function CollectionExecutionModal({
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         nodeTypes={NODE_TYPES}
+                        colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
                         fitView
                         fitViewOptions={{ padding: 0.15 }}
                         onNodeClick={(_, node) => handleCardClick(node.id)}

@@ -71,17 +71,33 @@ body {
   to   { transform: rotate(360deg); }
 }
 
-/* React Flow overrides — adapt chrome to the app theme */
-.react-flow__controls {
+/* React Flow overrides — adapt chrome to the app theme.
+   Rules use .radix-themes as a prefix to win the specificity battle against
+   @xyflow/react/dist/style.css, which is bundled after this file. */
+
+/* Card nodes: inherit the Radix foreground color so text is theme-aware */
+.radix-themes .react-flow__node {
+  color: var(--gray-12);
+}
+
+/* Controls panel */
+.radix-themes .react-flow__controls {
   box-shadow: none;
   border: 1px solid var(--gray-a6);
   border-radius: var(--radius-2);
   overflow: hidden;
+  background: var(--color-panel-solid);
 }
-.react-flow__controls-button {
+.radix-themes .react-flow__controls-button {
   background: var(--color-panel-solid);
   border-bottom: 1px solid var(--gray-a6);
+  color: var(--gray-11);
   fill: var(--gray-11);
 }
-.react-flow__controls-button:last-child { border-bottom: none; }
-.react-flow__controls-button:hover { background: var(--gray-a3); }
+.radix-themes .react-flow__controls-button svg {
+  fill: var(--gray-11);
+}
+.radix-themes .react-flow__controls-button:last-child { border-bottom: none; }
+.radix-themes .react-flow__controls-button:hover {
+  background: var(--gray-a3);
+}

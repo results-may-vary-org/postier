@@ -1,5 +1,6 @@
 import {Box, Button, Flex, Select, Separator, IconButton, Popover, Text, Switch} from "@radix-ui/themes";
 import {ExternalLinkIcon, UpdateIcon, MixerHorizontalIcon} from "@radix-ui/react-icons";
+import { Cat, Wine, UserRoundPen } from "lucide-react";
 import Logo from "../assets/images/postier.svg";
 import {useCollectionStore} from "../stores/store";
 import {BUILTIN_THEMES} from "../themes";
@@ -10,6 +11,39 @@ interface HeaderProps {
   userThemes: PostierTheme[];
   onReloadThemes: () => void;
 }
+
+// ── Per-category icons ────────────────────────────────────────────────────────
+
+function PostierIcon() {
+  return <img src={Logo} style={{ width: 14, height: 14, display: 'block' }} alt="" />;
+}
+
+function CatppuccinIcon() {
+  return <Cat size={14} color="#cba6f7" style={{ display: 'block' }} />;
+}
+
+function RosePineIcon() {
+  return <Wine size={14} color="#ebbcba" style={{ display: 'block' }} />;
+}
+
+function RadixIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ display: 'block' }}>
+      <polygon points="7,1 13,7 7,13 1,7" fill="var(--gray-9)" />
+    </svg>
+  );
+}
+
+/** Returns the icon component for a given builtin theme id. */
+function themeIcon(id: string): React.ReactNode {
+  if (id.startsWith('postier-'))     return <PostierIcon />;
+  if (id.startsWith('catppuccin-'))  return <CatppuccinIcon />;
+  if (id.startsWith('rose-pine'))    return <RosePineIcon />;
+  if (id === 'radix')                return <RadixIcon />;
+  return null;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function Header({ userThemes, onReloadThemes }: HeaderProps) {
   const { autoSave, setAutoSave, followRedirects, setFollowRedirects, selectedThemeId, setSelectedThemeId } = useCollectionStore();
@@ -43,16 +77,29 @@ export function Header({ userThemes, onReloadThemes }: HeaderProps) {
                     <Select.Group>
                       <Select.Label>Built-in</Select.Label>
                       {BUILTIN_THEMES.map(t => (
-                        <Select.Item key={t.id} value={t.id}>{t.name}</Select.Item>
+                        <Select.Item key={t.id} value={t.id}>
+                          <Flex align="center" gap="2">
+                            {themeIcon(t.id)}
+                            {t.name}
+                          </Flex>
+                        </Select.Item>
                       ))}
                     </Select.Group>
                     {userThemes.length > 0 && (
-                      <Select.Group>
-                        <Select.Label>Custom</Select.Label>
-                        {userThemes.map(t => (
-                          <Select.Item key={t.id} value={t.id}>{t.name}</Select.Item>
-                        ))}
-                      </Select.Group>
+                      <>
+                        <Select.Separator />
+                        <Select.Group>
+                          <Select.Label>Custom</Select.Label>
+                          {userThemes.map(t => (
+                            <Select.Item key={t.id} value={t.id}>
+                              <Flex align="center" gap="2">
+                                <UserRoundPen size={14} style={{ display: 'block' }} />
+                                {t.name}
+                              </Flex>
+                            </Select.Item>
+                          ))}
+                        </Select.Group>
+                      </>
                     )}
                   </Select.Content>
                 </Select.Root>

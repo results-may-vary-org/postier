@@ -36,7 +36,7 @@ export const useCollectionStore = create<CollectionState>()(
       autoSave: false,
       followRedirects: true,
       showAutoSaveModal: false,
-      selectedThemeId: 'default',
+      selectedThemeId: 'postier-light',
 
       setCollections: (collections: Collection[]) => set({ collections: collections }),
       addCollection: (collection: Collection) => set((state) => ({ collections: [...state.collections, collection] })),

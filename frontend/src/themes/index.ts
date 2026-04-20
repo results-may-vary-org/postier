@@ -16,7 +16,7 @@ export function applyTheme(theme: PostierTheme): void {
   const existing = document.getElementById('postier-theme-vars');
   if (existing) existing.remove();
 
-  if (theme.id === 'default') return;
+  if (theme.id === 'radix') return;
 
   let vars: Record<string, string> | null = null;
 
