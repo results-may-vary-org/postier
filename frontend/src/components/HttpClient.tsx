@@ -7,6 +7,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   DataList,
   Flex,
   IconButton,
@@ -88,6 +89,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
       if (a[i].key !== b[i].key || a[i].value !== b[i].value) return false;
+      if ((a[i].enabled !== false) !== (b[i].enabled !== false)) return false;
     }
     return true;
   }
@@ -101,10 +103,14 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
       setMethod(request.method);
       setUrl(request.url);
 
-      const headersArray = Object.entries(request.headers || {}).map(([key, value]) => ({ key, value: value }));
+      const headersArray: KeyValue[] = request.headerEntries?.length
+        ? request.headerEntries.map((e: any) => ({ key: e.key, value: e.value, enabled: e.enabled }))
+        : Object.entries(request.headers || {}).map(([key, value]) => ({ key, value, enabled: true }));
       setHeaders(headersArray);
 
-      const queryArray = Object.entries(request.query || {}).map(([key, value]) => ({ key, value: value }));
+      const queryArray: KeyValue[] = request.queryEntries?.length
+        ? request.queryEntries.map((e: any) => ({ key: e.key, value: e.value, enabled: e.enabled }))
+        : Object.entries(request.query || {}).map(([key, value]) => ({ key, value, enabled: true }));
       setQueryParams(queryArray);
 
       setBody(request.body || '');
@@ -178,10 +184,14 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
         wasAutoCreated = true;
       }
 
-      // Build headers object
+      // Full entries list — preserves disabled items so they survive save/load
+      const headerEntries = headers.map(h => ({ key: h.key, value: h.value, enabled: h.enabled !== false }));
+      const queryEntries  = queryParams.map(q => ({ key: q.key, value: q.value, enabled: q.enabled !== false }));
+
+      // Legacy map — only enabled entries + auto Content-Type (for external tooling)
       const headersObj: Record<string, string> = {};
       headers.forEach(header => {
-        if (header.key && header.value) {
+        if (header.key && header.value && header.enabled !== false) {
           headersObj[header.key] = header.value;
         }
       });
@@ -191,10 +201,9 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
       if (bodyType === 'xml') headersObj['Content-Type'] = 'application/xml';
       if (bodyType === 'sparql') headersObj['Content-Type'] = 'application/sparql-query';
 
-      // Build query object
       const queryObj: Record<string, string> = {};
       queryParams.forEach(param => {
-        if (param.key && param.value) {
+        if (param.key && param.value && param.enabled !== false) {
           queryObj[param.key] = param.value;
         }
       });
@@ -208,6 +217,8 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
         body: bodyType === 'none' ? '' : body,
         bodyType,
         query: queryObj,
+        headerEntries,
+        queryEntries,
         response: responseToSave !== undefined ? responseToSave : response,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -230,7 +241,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
   }, [method, url, headers, queryParams, body, bodyType, currentFilePath, response, selectedCollection, collections]);
 
   const addHeader = () => {
-    setHeaders([...headers, { key: '', value: '' }]);
+    setHeaders([...headers, { key: '', value: '', enabled: true }]);
   };
 
   const updateHeader = (index: number, field: 'key' | 'value', value: string) => {
@@ -244,7 +255,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
   };
 
   const addQueryParam = () => {
-    setQueryParams([...queryParams, { key: '', value: '' }]);
+    setQueryParams([...queryParams, { key: '', value: '', enabled: true }]);
   };
 
   const updateQueryParam = (index: number, field: 'key' | 'value', value: string) => {
@@ -255,6 +266,18 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
 
   const removeQueryParam = (index: number) => {
     setQueryParams(queryParams.filter((_, i) => i !== index));
+  };
+
+  const toggleHeader = (index: number, enabled: boolean) => {
+    const updated = [...headers];
+    updated[index] = { ...updated[index], enabled };
+    setHeaders(updated);
+  };
+
+  const toggleQueryParam = (index: number, enabled: boolean) => {
+    const updated = [...queryParams];
+    updated[index] = { ...updated[index], enabled };
+    setQueryParams(updated);
   };
 
   const sendRequest = async () => {
@@ -277,7 +300,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
     try {
       const headersMap: Record<string, string> = {};
       headers.forEach(header => {
-        if (header.key && header.value) {
+        if (header.key && header.value && header.enabled !== false) {
           headersMap[header.key] = header.value;
         }
       });
@@ -289,7 +312,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
 
       const queryMap: Record<string, string> = {};
       queryParams.forEach(param => {
-        if (param.key && param.value) {
+        if (param.key && param.value && param.enabled !== false) {
           queryMap[param.key] = param.value;
         }
       });
@@ -374,14 +397,14 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
 
   const generateHeadersBadge = () => {
     if (headers.length === 0) return <Badge color="gray" ml="1">0</Badge>
-    const fullHeaders = headers.filter(header => header.key && header.value);
-    return <Badge color="green" ml="1">{fullHeaders.length}</Badge>;
+    const active = headers.filter(h => h.key && h.value && h.enabled !== false);
+    return <Badge color={active.length > 0 ? "green" : "gray"} ml="1">{active.length}</Badge>;
   }
 
   const generateQueryBadge = () => {
     if (queryParams.length === 0) return <Badge color="gray" ml="1">0</Badge>
-    const fullQuery = queryParams.filter(header => header.key && header.value);
-    return <Badge color="green" ml="1">{fullQuery.length}</Badge>;
+    const active = queryParams.filter(q => q.key && q.value && q.enabled !== false);
+    return <Badge color={active.length > 0 ? "green" : "gray"} ml="1">{active.length}</Badge>;
   }
 
   const generateBodyBadge = () => {
@@ -469,8 +492,12 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
   useEffect(() => {
     if (currentFilePath) {
       LoadPostierRequest(currentFilePath).then((fileRequest: main.PostierRequest) => {
-        const headersArray = Object.entries(fileRequest.headers || {}).map(([key, value]) => ({ key, value }));
-        const queryArray = Object.entries(fileRequest.query || {}).map(([key, value]) => ({ key, value }));
+        const headersArray: KeyValue[] = (fileRequest as any).headerEntries?.length
+          ? (fileRequest as any).headerEntries.map((e: any) => ({ key: e.key, value: e.value, enabled: e.enabled }))
+          : Object.entries(fileRequest.headers || {}).map(([key, value]) => ({ key, value, enabled: true }));
+        const queryArray: KeyValue[] = (fileRequest as any).queryEntries?.length
+          ? (fileRequest as any).queryEntries.map((e: any) => ({ key: e.key, value: e.value, enabled: e.enabled }))
+          : Object.entries(fileRequest.query || {}).map(([key, value]) => ({ key, value, enabled: true }));
 
         const sortFn = (x: KeyValue, y: KeyValue) => x.key.localeCompare(y.key) || x.value.localeCompare(y.value);
 
@@ -624,7 +651,12 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
             </Box>
             <Box height="200px" overflowY="auto">
               {headers.map((header, index) => (
-                <Flex gap="2" pb="2" key={index}>
+                <Flex gap="2" pb="2" key={index} align="center" style={{ opacity: header.enabled === false ? 0.45 : 1, transition: 'opacity 120ms' }}>
+                  <Checkbox
+                    variant="soft"
+                    checked={header.enabled !== false}
+                    onCheckedChange={(checked) => toggleHeader(index, !!checked)}
+                  />
                   <Box width="100%">
                     <TextField.Root
                       type="text"
@@ -655,7 +687,12 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
             </Box>
             <Box height="200px" overflowY="auto">
               {queryParams.map((param, index) => (
-                <Flex gap="2" pb="2" key={index}>
+                <Flex gap="2" pb="2" key={index} align="center" style={{ opacity: param.enabled === false ? 0.45 : 1, transition: 'opacity 120ms' }}>
+                  <Checkbox
+                    variant="soft"
+                    checked={param.enabled !== false}
+                    onCheckedChange={(checked) => toggleQueryParam(index, !!checked)}
+                  />
                   <Box width="100%">
                     <TextField.Root
                       type="text"

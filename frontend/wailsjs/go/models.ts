@@ -328,6 +328,22 @@ export namespace main {
 	    }
 	}
 	
+	export class KeyValueEntry {
+	    key: string;
+	    value: string;
+	    enabled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new KeyValueEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	        this.enabled = source["enabled"];
+	    }
+	}
 	export class PostierRequest {
 	    name: string;
 	    description: string;
@@ -337,6 +353,8 @@ export namespace main {
 	    body: string;
 	    bodyType: string;
 	    query: Record<string, string>;
+	    headerEntries?: KeyValueEntry[];
+	    queryEntries?: KeyValueEntry[];
 	    response?: HTTPResponse;
 	    // Go type: time
 	    createdAt: any;
@@ -357,6 +375,8 @@ export namespace main {
 	        this.body = source["body"];
 	        this.bodyType = source["bodyType"];
 	        this.query = source["query"];
+	        this.headerEntries = this.convertValues(source["headerEntries"], KeyValueEntry);
+	        this.queryEntries = this.convertValues(source["queryEntries"], KeyValueEntry);
 	        this.response = this.convertValues(source["response"], HTTPResponse);
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.updatedAt = this.convertValues(source["updatedAt"], null);
