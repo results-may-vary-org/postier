@@ -14,9 +14,9 @@ export { defaultTheme };
 
 /** All themes bundled with the app, in display order. */
 export const BUILTIN_THEMES: PostierTheme[] = [
-  defaultTheme,
   postierLight,
   postierDark,
+  defaultTheme,
   catppuccinMocha,
   catppuccinMacchiato,
   catppuccinFrappe,

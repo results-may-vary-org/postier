@@ -112,6 +112,7 @@ export function CollectionRunNode({ data }: NodeProps<CollectionRunNodeType>) {
                         whiteSpace: "nowrap",
                         flex: 1,
                         minWidth: 0,
+                        color: "var(--gray-12)",
                     }}
                     title={depNode.name}
                 >

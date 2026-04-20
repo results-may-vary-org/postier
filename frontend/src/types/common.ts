@@ -3,7 +3,7 @@ import DirectoryTree = main.DirectoryTree;
 
 export type Theme = "system" | "dark" | "light";
 
-export type BodyType = "json" | "text" | "none" | "xml" | "sparql";
+export type BodyType = "json" | "text" | "none" | "xml" | "sparql" | "raw";
 
 export interface KeyValue {
   key: string;
