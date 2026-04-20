@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Postier — Lightweight HTTP Client for Developers</title>
+  <meta name="description" content="Postier is a free, open-source HTTP client desktop app. No account. No telemetry. No bloat. Debug APIs, inspect responses, trace connections — built for developers who know what they want.">
+  <meta name="keywords" content="HTTP client, API testing, REST client, open source, Postman alternative, developer tools">
+  <meta property="og:title" content="Postier — Lightweight HTTP Client for Developers">
+  <meta property="og:description" content="A free, open-source HTTP client. No account. No telemetry. No bloat.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jacquard+12&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==================== NAVIGATION ==================== -->
+  <nav class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <svg height="40px" viewBox="0 0 529 766" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <mask id="mask0_2001_2" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="529" height="766">
+          <path d="M12.288 0H27.648H335.872H430.592C452.608 0 481.28 10.752 502.784 35.84C519.987 55.9104 526.336 84.8213 527.36 96.768L528.384 412.672L527.36 459.264C524.971 470.869 517.734 497.05 507.904 508.928C480.87 544.154 441.685 552.277 425.472 551.936H277.504C261.53 551.936 259.243 537.6 260.096 530.432L312.32 45.568L313.344 30.72C313.173 28.672 310.784 24.576 302.592 24.576C294.4 24.576 290.304 30.3787 289.28 33.28L216.064 699.904L212.992 727.04C208.077 754.483 185.856 766.464 175.104 765.952H13.312C4.7104 765.952 0 757.76 0 753.664V22.016V11.776C0 1.536 10.24 -1.04331e-05 12.288 0Z" fill="#D9D9D9"/>
+          </mask>
+          <g mask="url(#mask0_2001_2)">
+          <rect x="-347.648" y="75.9695" width="1011.71" height="256.639" transform="rotate(-17.2625 -347.648 75.9695)" fill="#EFCF4A"/>
+          <path d="M-270.848 217.184C-270.848 217.184 525.312 119.71 716.288 -49.2498L771.45 162.037L-194.69 462.263L-270.848 217.184Z" fill="#D95525"/>
+          <path d="M-205.198 346.164C-9.8115 536.828 643.268 -47.8971 803.265 265.154C963.263 578.205 823.815 520.969 823.815 520.969L-184.649 601.979C-184.649 601.979 -400.585 155.5 -205.198 346.164Z" fill="#CC3B2C"/>
+          <path d="M-212.105 673.325C-262.074 513.271 411.656 472.873 691.706 218.696C971.756 -35.4814 807.031 447.964 807.031 447.964L-96.7802 902.592C-96.7802 902.592 -162.136 833.378 -212.105 673.325Z" fill="#9D2C44"/>
+          <path d="M-206.308 739.454C-198.405 684.16 305.15 580.52 305.15 580.52L383.573 832.888L-127.885 991.823C-127.885 991.823 -214.21 794.749 -206.308 739.454Z" fill="#6F364F"/>
+          </g>
+        </svg>
+      </a>
+      <ul class="nav__links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#timeline">Timeline</a></li>
+        <li><a href="docs.html">Docs</a></li>
+      </ul>
+      <a href="https://github.com/results-may-vary-org/postier" target="_blank" rel="noopener" class="nav__cta">
+        <i data-lucide="git-compare-arrows"></i>
+        GitHub
+      </a>
+    </div>
+  </nav>
+
+  <!-- ==================== HERO ==================== -->
+  <section class="hero">
+
+    <div class="hero__title">
+      <svg width="100%" viewBox="0 0 2194 608" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M573.412 157.6C588.879 157.6 612.879 170.667 645.412 196.8C678.479 222.933 698.746 242.4 706.213 255.2C717.413 274.4 723.013 316.801 723.013 382.4C723.013 448 717.413 490.667 706.213 510.4C698.746 523.2 678.479 542.667 645.412 568.8C612.879 594.933 588.879 608 573.412 608C557.945 608 533.679 594.933 500.612 568.8C468.079 542.667 448.079 523.2 440.612 510.4C429.412 490.667 423.813 448 423.812 382.4C423.812 316.801 429.412 274.4 440.612 255.2C448.079 242.4 468.079 222.933 500.612 196.8C533.679 170.667 557.945 157.6 573.412 157.6ZM908.287 157.6C928.02 157.6 952.554 167.467 981.888 187.2C1011.75 206.933 1033.89 230.133 1048.29 256.8L965.888 313.6C939.221 276.266 919.754 257.6 907.487 257.6C901.087 257.6 893.087 261.333 883.487 268.8C874.421 275.733 869.888 282.133 869.888 288C869.888 293.867 879.488 302.934 898.688 315.2C918.421 327.467 939.754 340.266 962.688 353.6C986.154 366.4 1007.49 383.467 1026.69 404.8C1046.42 425.6 1056.29 446.933 1056.29 468.8C1056.29 485.333 1035.75 512.8 994.688 551.2C953.621 589.067 922.954 608 902.688 608C882.954 608 858.154 598.134 828.287 578.4C798.954 558.667 777.087 535.466 762.688 508.8L845.088 452C871.754 489.333 891.221 508 903.487 508C912.554 508 923.755 503.467 937.088 494.4C950.421 485.334 957.088 476.8 957.088 468.8C957.087 466.666 950.687 462.133 937.888 455.2C925.088 447.734 909.354 438.667 890.688 428C872.554 416.8 854.42 404.534 836.287 391.2C818.154 377.334 802.688 360.533 789.888 340.8C777.088 321.066 770.688 301.066 770.688 280.8C770.688 260.533 788.821 234.933 825.088 204C861.354 173.067 889.087 157.6 908.287 157.6ZM1172.47 13.5996C1210.87 43.9996 1230.07 87.2002 1230.07 143.2V167.2H1319.67V251.2H1230.07V428C1230.07 453.067 1238.6 476 1255.67 496.8C1272.74 517.6 1296.2 534.134 1326.07 546.4L1238.07 608C1206.07 593.067 1179.14 572.534 1157.27 546.4C1135.4 519.734 1124.47 491.734 1124.47 462.4V251.2H1084.47V191.2L1124.47 181.6C1123.4 155.467 1120.2 134.933 1114.87 120C1109.54 104.533 1099.4 89.6002 1084.47 75.2002L1172.47 13.5996ZM1483.51 444C1483.51 471.2 1486.71 492.267 1493.11 507.2C1499.51 522.133 1509.64 535.2 1523.51 546.4L1435.51 608C1397.11 577.6 1377.91 534.4 1377.91 478.4V167.2H1483.51V444ZM1696.85 157.6C1712.85 157.6 1737.92 171.733 1772.05 200C1806.72 228.267 1827.78 250.4 1835.25 266.4C1842.72 281.867 1846.45 320.267 1846.45 381.6V410.4H1652.85C1652.85 442.4 1656.85 467.734 1664.85 486.4C1667.52 492.8 1672.32 499.467 1679.25 506.4C1686.18 512.8 1693.38 516 1700.85 516C1708.32 516 1717.65 509.6 1728.85 496.8C1740.05 484 1748.85 468.534 1755.25 450.4L1837.65 508.8C1823.25 535.466 1801.12 558.667 1771.25 578.4C1741.92 598.134 1718.18 608 1700.05 608C1681.92 608 1655.52 593.866 1620.85 565.6C1586.72 537.333 1565.92 515.467 1558.45 500C1550.98 484 1547.25 445.067 1547.25 383.2C1547.25 320.801 1550.98 281.867 1558.45 266.4C1565.92 250.4 1586.72 228.267 1620.85 200C1655.52 171.734 1680.85 157.6 1696.85 157.6ZM226.4 28.7998C245.067 28.8 270.934 43.7333 304 73.5996C337.067 103.466 359.467 128.533 371.2 148.8C377.067 156.266 380 182.134 380 226.4C380 270.667 377.067 298.667 371.2 310.4C359.467 330.667 337.066 355.733 304 385.6C270.934 415.466 245.067 430.4 226.4 430.4H194.4V327.2H210.4C220.534 327.2 232.267 322.4 245.6 312.8C259.466 302.666 268.267 291.733 272 280C275.733 268.267 277.6 252.533 277.6 232.8C277.6 213.067 275.733 196.8 272 184C268.267 170.667 259.466 159.2 245.6 149.6C232.267 140 219.2 135.2 206.4 135.2C194.134 135.2 177.333 142.133 156 156C157.6 173.6 158.4 191.466 158.4 209.6V598.4H48V256C48 211.2 44.8004 179.733 38.4004 161.6C32.5337 142.933 19.7332 121.333 0 96.7998L96 28.7998C109.867 38.3998 122.133 54.1334 132.8 76C176.533 44.5334 207.734 28.7998 226.4 28.7998ZM2105.92 157.6C2116.59 157.6 2132.85 167.467 2154.72 187.2C2176.59 206.933 2189.39 228.533 2193.12 252L2107.52 313.6C2106.99 300.8 2103.79 288.267 2097.92 276C2092.59 263.733 2087.79 257.6 2083.52 257.6C2074.45 257.6 2058.72 268.8 2036.32 291.2V598.4H1930.72V322.4C1930.72 295.2 1927.25 274.134 1920.32 259.2C1913.92 243.734 1904.05 230.4 1890.72 219.2L1978.72 157.6C1997.92 173.6 2012.59 192.266 2022.72 213.6C2062.19 176.266 2089.92 157.6 2105.92 157.6ZM573.412 249.6C568.612 249.6 561.945 253.6 553.412 261.6C545.412 269.6 539.546 276.8 535.812 283.2C528.879 294.934 525.412 328.001 525.412 382.4C525.412 436.8 528.879 470.134 535.812 482.4C539.546 488.8 545.412 496 553.412 504C561.945 512 568.612 516 573.412 516C578.212 516 584.612 512 592.612 504C601.146 496 607.279 488.8 611.013 482.4C617.946 470.667 621.412 437.6 621.412 383.2C621.412 328.801 617.946 295.467 611.013 283.2C607.279 276.8 601.146 269.6 592.612 261.6C584.612 253.6 578.212 249.6 573.412 249.6ZM1693.65 249.6C1686.72 249.6 1678.72 256.8 1669.65 271.2C1660.58 285.067 1654.98 306.134 1652.85 334.4H1744.05C1742.45 306.134 1739.52 288.533 1735.25 281.6C1731.52 274.133 1725.38 266.933 1716.85 260C1708.85 253.067 1701.12 249.6 1693.65 249.6ZM1432.31 0C1438.17 0.000366194 1451.24 8.80077 1471.51 26.4004C1491.77 43.4667 1501.91 55.1995 1501.91 61.5996C1501.91 67.4663 1491.51 79.1998 1470.71 96.7998C1450.44 114.4 1437.37 123.2 1431.51 123.2C1426.17 123.2 1413.37 114.666 1393.11 97.5996C1372.84 80 1362.71 68.2672 1362.71 62.4004C1362.71 56.0004 1372.84 44.0004 1393.11 26.4004C1413.91 8.80039 1426.97 0 1432.31 0Z" fill="#D95525"/>
+      </svg>
+    </div>
+
+    <p class="hero__desc">
+      is a lightweight HTTP client for developers tired of bloated tools,
+      mandatory accounts &amp; surveillance-grade privacy policies.
+      Free. Open-source. No catch.
+    </p>
+
+    <div class="hero__screenshot-section">
+      <img
+      src="./assets/capmain.png"
+      alt="Postier HTTP Client interface"
+      width="1400"
+      >
+    </div>
+
+    <div class="hero__actions">
+      <a href="https://github.com/results-may-vary-org/postier/releases" target="_blank" rel="noopener" class="btn btn--primary">
+        <i data-lucide="download"></i>
+        Download
+      </a>
+      <a href="docs.html" class="btn btn--ghost">
+        Read the docs &rarr;
+      </a>
+    </div>
+
+  </section>
+
+  <!-- ==================== MANIFESTO STRIP ==================== -->
+  <div class="strip">
+    <div class="container strip__inner">
+      <div class="strip__item">
+        <i data-lucide="shield-off"></i>
+        No account
+      </div>
+      <div class="strip__sep"></div>
+      <div class="strip__item">
+        <i data-lucide="eye-off"></i>
+        No telemetry
+      </div>
+      <div class="strip__sep"></div>
+      <div class="strip__item">
+        <i data-lucide="monitor"></i>
+        Cross-platform
+      </div>
+      <div class="strip__sep"></div>
+      <div class="strip__item">
+        <i data-lucide="feather"></i>
+        No bloat
+      </div>
+      <div class="strip__sep"></div>
+      <div class="strip__item">
+        <i data-lucide="git-branch"></i>
+        Git-friendly
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== FEATURES ==================== -->
+  <section class="features section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="label">Features</span>
+        <h2 class="section-title">Everything you need.<br>Nothing you don't.</h2>
+        <p class="section-sub">
+          A feature-light, no-bullshit alternative to Postman and equivalents.
+          Built by a developer who got tired of paying for features nobody asked for.
+        </p>
+      </div>
+
+      <div class="features__grid">
+
+        <div class="feature-card" data-accent="amber">
+          <span class="feature-card__num">01</span>
+          <div class="feature-card__icon"><i data-lucide="send"></i></div>
+          <h3>Request Builder</h3>
+          <p>
+            All HTTP methods. Full control over headers, query params, and body —
+            JSON, XML, SPARQL, or raw. Environment variables with
+            <code>{{VARIABLE_NAME}}</code> syntax.
+          </p>
+        </div>
+
+        <div class="feature-card" data-accent="blue">
+          <span class="feature-card__num">02</span>
+          <div class="feature-card__icon"><i data-lucide="eye"></i></div>
+          <h3>Response Viewer</h3>
+          <p>
+            Status, time and size at a glance. Syntax-highlighted body.
+            Click any JSON path to copy it as an inject reference. Headers and cookies included.
+          </p>
+        </div>
+
+        <div class="feature-card" data-accent="green">
+          <span class="feature-card__num">03</span>
+          <div class="feature-card__icon"><i data-lucide="timer"></i></div>
+          <h3>HTTP Trace</h3>
+          <p>
+            Full timeline of every connection phase — DNS lookup, TCP handshake, TLS negotiation,
+            TTFB, transfer. Redirect chains tracked. Know exactly where every millisecond goes.
+            Everything is calculated in local.
+          </p>
+        </div>
+
+        <div class="feature-card" data-accent="red">
+          <span class="feature-card__num">04</span>
+          <div class="feature-card__icon"><i data-lucide="git-branch"></i></div>
+          <h3>Dependency Graph</h3>
+          <p>
+            Chain requests. Inject values from any previous response into later fields using
+            <code>{{@file|body.id}}</code> syntax. Run your whole collection in one click,
+            in dependency order, with a live graph view.
+          </p>
+        </div>
+
+        <div class="feature-card" data-accent="amber">
+          <span class="feature-card__num">05</span>
+          <div class="feature-card__icon"><i data-lucide="folder-open"></i></div>
+          <h3>Local-first &amp; Git-ready</h3>
+          <p>
+            Requests are plain <code>.postier</code> JSON files in folders you own.
+            No cloud sync, no account, no lock-in. Commit them to git, share them
+            with your team, diff them like any other code.
+          </p>
+        </div>
+
+        <div class="feature-card" data-accent="blue">
+          <span class="feature-card__num">06</span>
+          <div class="feature-card__icon"><i data-lucide="package"></i></div>
+          <h3>Env variables &amp; Secret Masking</h3>
+          <p>
+            Inject any variable accros request by collection with <code>{{base_url}}</code> syntax.
+            API keys, tokens, and passwords are auto-masked in the UI.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SPOTLIGHT: TIMELINE ==================== -->
+  <section class="spotlight section" id="timeline">
+    <div class="container">
+      <div class="spotlight__inner">
+
+        <div class="spotlight__visual anim-reveal">
+          <div class="spotlight__glow spotlight__glow--green"></div>
+          <div class="spotlight__img-wrap">
+            <div class="spotlight__win-bar">
+              <span class="spotlight__win-dot"></span>
+              <span class="spotlight__win-dot"></span>
+              <span class="spotlight__win-dot"></span>
+            </div>
+            <img
+              src="./assets/timeline.png"
+              alt="HTTP trace timeline view"
+              width="680" height="440"
+            >
+          </div>
+        </div>
+
+        <div class="spotlight__content anim-reveal">
+          <span class="label">HTTP Trace</span>
+          <h2 class="section-title">See every millisecond<br>of your request.</h2>
+          <p>
+            Postier hooks into Go's native HTTP transport to give you a full trace of every
+            connection step. DNS lookup, TCP connect, TLS handshake, first byte, full transfer —
+            with timestamps accurate to the millisecond.
+          </p>
+          <p>
+            Redirect chains are tracked and shown separately. Certificate details exposed on TLS connections.
+            Never wonder where latency comes from again.
+          </p>
+          <a href="docs.html#timeline" class="btn btn--outline">Learn more &rarr;</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- <div class="section-divider"></div> -->
+
+  <!-- ==================== SPOTLIGHT: GRAPH ==================== -->
+  <section class="spotlight section" id="graph">
+    <div class="container">
+      <div class="spotlight__inner spotlight__inner--flip">
+
+        <div class="spotlight__visual anim-reveal">
+          <div class="spotlight__glow spotlight__glow--amber"></div>
+          <div class="spotlight__img-wrap">
+            <div class="spotlight__win-bar">
+              <span class="spotlight__win-dot"></span>
+              <span class="spotlight__win-dot"></span>
+              <span class="spotlight__win-dot"></span>
+            </div>
+            <img
+              src="./assets/chain.png"
+              alt="Request dependency graph"
+              width="680" height="440"
+            >
+          </div>
+        </div>
+
+        <div class="spotlight__content anim-reveal">
+          <span class="label">Dependency Graph</span>
+          <h2 class="section-title">Chain requests.<br>Build real flows.</h2>
+          <p>
+            Use <code>{{@filename|body[0].id}}</code> to inject a value from any previous
+            response into any field of a later request. Works on body (with full dot/bracket
+            JSON path traversal), headers, and status codes.
+          </p>
+          <p>
+            Hit "Run all" and Postier resolves the dependency order automatically —
+            then renders a live graph while it executes. Two independent chains
+            are colored differently. Inspect every step.
+          </p>
+          <a href="docs.html#graph" class="btn btn--outline">Learn more &rarr;</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== THEMES ==================== -->
+  <section class="themes section" id="themes">
+    <div class="container">
+      <div class="themes__inner">
+
+        <div class="themes__content anim-reveal">
+          <span class="label">Themes</span>
+          <h2 class="section-title">Looks the way<br>you want it to.</h2>
+          <p>
+            Postier ships with Catppuccin and Rosé Pine out of the box.
+            Don't like them? Drop a JSON file in the config folder and reload —
+            no restart, no build step.
+          </p>
+          <p>
+            Your theme lives on disk like everything else. Version-control it,
+            share it with teammates, or keep it private. It's just a file.
+          </p>
+          <a href="docs.html#themes" class="btn btn--outline">Theme docs &rarr;</a>
+        </div>
+
+        <div class="themes__grid anim-reveal">
+          <div class="theme-chip theme-chip--mocha">Catppuccin Mocha</div>
+          <div class="theme-chip theme-chip--macchiato">Catppuccin Macchiato</div>
+          <div class="theme-chip theme-chip--frappe">Catppuccin Frappé</div>
+          <div class="theme-chip theme-chip--latte">Catppuccin Latte</div>
+          <div class="theme-chip theme-chip--rose">Rosé Pine</div>
+          <div class="theme-chip theme-chip--moon">Rosé Pine Moon</div>
+          <div class="theme-chip theme-chip--dawn">Rosé Pine Dawn</div>
+          <div class="theme-chip theme-chip--custom">
+            <i data-lucide="plus"></i>
+            Your own
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== CTA ==================== -->
+  <section class="cta section">
+    <div class="cta__backdrop" aria-hidden="true">Postier</div>
+    <div class="container cta__inner">
+      <h2 class="cta__title anim-reveal">Ready to ditch<br>the bloat?</h2>
+      <p class="cta__sub anim-reveal">
+        Postier is free, open source, and runs on Linux, macOS and Windows.
+        No account required. No catch. Just download and use it.
+      </p>
+      <div class="cta__actions anim-reveal">
+        <a href="https://github.com/results-may-vary-org/postier/releases" target="_blank" rel="noopener" class="btn btn--primary btn--lg">
+          <i data-lucide="download"></i>
+          Download Postier
+        </a>
+        <a href="https://github.com/results-may-vary-org/postier" target="_blank" rel="noopener" class="btn btn--ghost btn--lg">
+          <i data-lucide="git-compare-arrows"></i>
+          View on GitHub
+        </a>
+      </div>
+      <div class="cta__note anim-reveal">
+        <i data-lucide="check-circle-2"></i>
+        Linux · macOS · Windows &mdash; built with Wails.
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <div class="footer__brand">
+          <a href="index.html" class="footer__logo">Postier</a>
+          <p class="footer__tagline">
+            A lightweight, no-bullshit HTTP client for developers
+            who value their time and privacy.
+          </p>
+        </div>
+
+        <nav class="footer__nav" aria-label="Footer navigation">
+          <div class="footer__col">
+            <h4>Product</h4>
+            <ul>
+              <li><a href="#features">Features</a></li>
+              <li><a href="https://github.com/results-may-vary-org/postier/releases" target="_blank" rel="noopener">Download</a></li>
+              <li><a href="https://github.com/results-may-vary-org/postier/issues" target="_blank" rel="noopener">Issues</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <h4>Docs</h4>
+            <ul>
+              <li><a href="docs.html">Getting Started</a></li>
+              <li><a href="docs.html#requests">Request Builder</a></li>
+              <li><a href="docs.html#timeline">Timeline</a></li>
+              <li><a href="docs.html#graph">Graph</a></li>
+              <li><a href="docs.html#themes">Themes</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <h4>Project</h4>
+            <ul>
+              <li><a href="https://github.com/results-may-vary-org/postier" target="_blank" rel="noopener">GitHub</a></li>
+              <li><a href="https://github.com/results-may-vary-org/postier/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
+              <li><a href="https://rmv.a2n.dev/" target="_blank" rel="noopener">By RMV</a></li>
+              <li><a href="https://ko-fi.com/a2n00" target="_blank" rel="noopener">Support the project</a></li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+
+      <div class="footer__bottom">
+        <span>Made with intention by <a href="https://rmv.a2n.dev/" target="_blank" rel="noopener">RMV</a></span>
+        <span>
+          Open-source &mdash;
+          <a href="https://github.com/results-may-vary-org/postier/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+          &nbsp;&middot;&nbsp;
+          <a href="https://github.com/results-may-vary-org/postier/releases" target="_blank" rel="noopener">Changelog</a>
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
