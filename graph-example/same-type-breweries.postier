@@ -24,13 +24,13 @@
         "BYPASS"
       ],
       "Cf-Ray": [
-        "9ee695de0bb87034-CDG"
+        "9ef3221cfbc62b02-CDG"
       ],
       "Content-Type": [
         "application/json"
       ],
       "Date": [
-        "Sat, 18 Apr 2026 20:58:04 GMT"
+        "Mon, 20 Apr 2026 09:30:57 GMT"
       ],
       "Etag": [
         "W/\"78aba9c3c1c2592881a9cce827e79a95\""
@@ -42,19 +42,19 @@
         "strict-origin-when-cross-origin"
       ],
       "Report-To": [
-        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=eDqoNf9ncTQopCgu80uFaZ4bWHPpiJzisZMAonAIfF%2BOx4xlB1htv8OjtnJgddDGl7%2Fb2%2BwUl9IfJcQ2aqwHKFVUlZMHlfA6jPGUU%2BwHT5Nx7vtUsBLgFa51GBw4R02O2WBjOqNuEiR3SGfKBLdWge8Quak%3D\"}]}"
+        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=WrmcrJQ78lDgheVC3Xl4htP9imQ53o3gCPT1hPCYtatCZXzJ8lFuUa%2FcQul88%2Ba%2FzO2ZXkHWLJ645tt2JEZW7pkZF4GHBcAhtx2yCpeNdqZ%2FOW0NrSwVWrRT9QahKVdMJTMX9hWGQ48%3D\"}]}"
       ],
       "Server": [
         "cloudflare"
       ],
       "Server-Timing": [
         "cfCacheStatus;desc=\"BYPASS\"",
-        "cfEdge;dur=9,cfOrigin;dur=195"
+        "cfEdge;dur=12,cfOrigin;dur=191"
       ],
       "Set-Cookie": [
-        "XSRF-TOKEN=eyJpdiI6IjJta3YrTisrSDg5ME54S0xjSFNaWEE9PSIsInZhbHVlIjoiU1dXaktCR0luUWRoTXdWenFNNC9FbmN6QTU2T1p5N0lOZjFqTVlnWjlicFF0VzVRc1dZNldUbGRqRHJ1SW1hbHZZcXBaNk5IV3BIM1pwYkwwaFhjWXNtVHF1NVVXOTAvVytGbFpNN2xhWFV3RlhOQXU2d1oweHZxaHNSRnYvVGYiLCJtYWMiOiI4MWU3MjQwYzY0Mjg4NThhMDQ4OGU5NTMyZDAwN2Q2ZGIyNTIyYmNkZTU0MDBiMzA0NzRhZWU5ODk5OTYyNjBiIiwidGFnIjoiIn0%3D; expires=Sat, 18 Apr 2026 22:58:03 GMT; Max-Age=7200; path=/; samesite=lax",
-        "laravel_session=eyJpdiI6IklsTkUwNnRsK0FtVzN4dHFjU3lBTFE9PSIsInZhbHVlIjoiT3EwZWhxSFRwR3VGUUE5M3FSTlRQNHVsK2RyYjVCTUFsdVcyNVZKQWhzcTg5V1hlNFFZNUJZdlhvYkNSaTVVRVFoRzRpY1lhQXlxUXhNM1NJNlVoVjF1eDJ1cWIzNWRTYVdHdWY4YlRoWkREVUFJZXkzTE0vVXpreGpzM0xPczMiLCJtYWMiOiJkZGQyNmQzMDFiNzgwMjBlMGQ5M2FjMDY1OTcyNDk0YjhlOTBiOTg3MDY0ZWM1NmRmZTNiZDVkZjUwODYwMzc2IiwidGFnIjoiIn0%3D; expires=Sat, 18 Apr 2026 22:58:03 GMT; Max-Age=7200; path=/; httponly; samesite=lax",
-        "__cf_bm=2_KaRGOsujeAbjuSaSLhq_d_Hmu6GN6woJwbG9Q4wLc-1776545883.8541982-1.0.1.1-BI1rMW2qNuUFTYN.T7Zgoo.3AezEsQlvir7hiXlf9k9QbWAjeoGjUR6SgNcURn2qNDZmGysaxm14WGkANpXeaEvAuGJfFQzwqVDFDU0RadC08KG_sUgr87_HIjqBwWQ7; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Sat, 18 Apr 2026 21:28:04 GMT"
+        "XSRF-TOKEN=eyJpdiI6IllRcnFGR3FKc3B3SXFxM29oMHBhTWc9PSIsInZhbHVlIjoiellTalducDNoNnBha3pFdnhtaThNbS9FYWM1S2h2Z2hlT2E2WVl3dUZuT3NwT3NBbVNGWHg3N1pTTVdiLy82ZDZGcW55NEhiREQrTTUxcTg3VTBaaEo0VE92NVdkTnA0Vi85SlJHY3dZYnljRTJ4UnNOc3MzSlVtQlhxeWtxRWEiLCJtYWMiOiIzOTFmYWRmYThjMzFkODI0YzJjYmRjZGYwNDQ4MzBjZGI4YmQxYzkxYmNkNGIwNWYwZTRhN2E0OTQxYTNjNWQyIiwidGFnIjoiIn0%3D; expires=Mon, 20 Apr 2026 11:30:57 GMT; Max-Age=7200; path=/; samesite=lax",
+        "laravel_session=eyJpdiI6Im1hUTlhemRNOCtvN3pjcG54RFJvNnc9PSIsInZhbHVlIjoicklSVDYzMVR6SXVvRVdCc05KMWIreHBUMVZGWW1WQi9pdnlIUXRSeW1hY3VsTk5WdTMyYXNVbzZWR1czMy80WjRlMXA4S0QyQUl5MkVRRWJMMndzalFrZUV4Z3RSSEszQXlPNThDa3U0dWJJYm4yT3doK0VscHl4bnVwZkVJRE4iLCJtYWMiOiIwM2M1Y2IyNmJjMWZkNGQ5OGI4YTE3NjMxZWNkZTZmMWE0MjBiN2EyYzI5YjZmOTE1YmM3MjI3Yjg0NGI4MmI4IiwidGFnIjoiIn0%3D; expires=Mon, 20 Apr 2026 11:30:57 GMT; Max-Age=7200; path=/; httponly; samesite=lax",
+        "__cf_bm=NvTucU4oStT7L_XXWmAbRgZgxrw5i9ACj5NCLl2Mccw-1776677457.4475129-1.0.1.1-UXOBz4rhErXnhqKYup2oBG6aTHfkjG0T.je2rbAjYsjdgRw4f0Bb1eI0.Ebk4aEYkkZsKGinUW9OhNrkAqsAaJD31g_A0n6nz64nZzfjmYrtAgnWS3Q34y6Klaw6evty; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Mon, 20 Apr 2026 10:00:57 GMT"
       ],
       "Strict-Transport-Security": [
         "max-age=31536000; includeSubDomains"
@@ -78,35 +78,35 @@
     "cookies": [
       {
         "name": "XSRF-TOKEN",
-        "value": "eyJpdiI6IjJta3YrTisrSDg5ME54S0xjSFNaWEE9PSIsInZhbHVlIjoiU1dXaktCR0luUWRoTXdWenFNNC9FbmN6QTU2T1p5N0lOZjFqTVlnWjlicFF0VzVRc1dZNldUbGRqRHJ1SW1hbHZZcXBaNk5IV3BIM1pwYkwwaFhjWXNtVHF1NVVXOTAvVytGbFpNN2xhWFV3RlhOQXU2d1oweHZxaHNSRnYvVGYiLCJtYWMiOiI4MWU3MjQwYzY0Mjg4NThhMDQ4OGU5NTMyZDAwN2Q2ZGIyNTIyYmNkZTU0MDBiMzA0NzRhZWU5ODk5OTYyNjBiIiwidGFnIjoiIn0%3D",
+        "value": "eyJpdiI6IllRcnFGR3FKc3B3SXFxM29oMHBhTWc9PSIsInZhbHVlIjoiellTalducDNoNnBha3pFdnhtaThNbS9FYWM1S2h2Z2hlT2E2WVl3dUZuT3NwT3NBbVNGWHg3N1pTTVdiLy82ZDZGcW55NEhiREQrTTUxcTg3VTBaaEo0VE92NVdkTnA0Vi85SlJHY3dZYnljRTJ4UnNOc3MzSlVtQlhxeWtxRWEiLCJtYWMiOiIzOTFmYWRmYThjMzFkODI0YzJjYmRjZGYwNDQ4MzBjZGI4YmQxYzkxYmNkNGIwNWYwZTRhN2E0OTQxYTNjNWQyIiwidGFnIjoiIn0%3D",
         "domain": "",
         "path": "/",
-        "expires": "2026-04-18T22:58:03Z",
+        "expires": "2026-04-20T11:30:57Z",
         "secure": false,
         "httpOnly": false
       },
       {
         "name": "laravel_session",
-        "value": "eyJpdiI6IklsTkUwNnRsK0FtVzN4dHFjU3lBTFE9PSIsInZhbHVlIjoiT3EwZWhxSFRwR3VGUUE5M3FSTlRQNHVsK2RyYjVCTUFsdVcyNVZKQWhzcTg5V1hlNFFZNUJZdlhvYkNSaTVVRVFoRzRpY1lhQXlxUXhNM1NJNlVoVjF1eDJ1cWIzNWRTYVdHdWY4YlRoWkREVUFJZXkzTE0vVXpreGpzM0xPczMiLCJtYWMiOiJkZGQyNmQzMDFiNzgwMjBlMGQ5M2FjMDY1OTcyNDk0YjhlOTBiOTg3MDY0ZWM1NmRmZTNiZDVkZjUwODYwMzc2IiwidGFnIjoiIn0%3D",
+        "value": "eyJpdiI6Im1hUTlhemRNOCtvN3pjcG54RFJvNnc9PSIsInZhbHVlIjoicklSVDYzMVR6SXVvRVdCc05KMWIreHBUMVZGWW1WQi9pdnlIUXRSeW1hY3VsTk5WdTMyYXNVbzZWR1czMy80WjRlMXA4S0QyQUl5MkVRRWJMMndzalFrZUV4Z3RSSEszQXlPNThDa3U0dWJJYm4yT3doK0VscHl4bnVwZkVJRE4iLCJtYWMiOiIwM2M1Y2IyNmJjMWZkNGQ5OGI4YTE3NjMxZWNkZTZmMWE0MjBiN2EyYzI5YjZmOTE1YmM3MjI3Yjg0NGI4MmI4IiwidGFnIjoiIn0%3D",
         "domain": "",
         "path": "/",
-        "expires": "2026-04-18T22:58:03Z",
+        "expires": "2026-04-20T11:30:57Z",
         "secure": false,
         "httpOnly": true
       },
       {
         "name": "__cf_bm",
-        "value": "2_KaRGOsujeAbjuSaSLhq_d_Hmu6GN6woJwbG9Q4wLc-1776545883.8541982-1.0.1.1-BI1rMW2qNuUFTYN.T7Zgoo.3AezEsQlvir7hiXlf9k9QbWAjeoGjUR6SgNcURn2qNDZmGysaxm14WGkANpXeaEvAuGJfFQzwqVDFDU0RadC08KG_sUgr87_HIjqBwWQ7",
+        "value": "NvTucU4oStT7L_XXWmAbRgZgxrw5i9ACj5NCLl2Mccw-1776677457.4475129-1.0.1.1-UXOBz4rhErXnhqKYup2oBG6aTHfkjG0T.je2rbAjYsjdgRw4f0Bb1eI0.Ebk4aEYkkZsKGinUW9OhNrkAqsAaJD31g_A0n6nz64nZzfjmYrtAgnWS3Q34y6Klaw6evty",
         "domain": "api.openbrewerydb.org",
         "path": "/",
-        "expires": "2026-04-18T21:28:04Z",
+        "expires": "2026-04-20T10:00:57Z",
         "secure": true,
         "httpOnly": true
       }
     ],
     "body": "{\"message\":\"Welcome to the Breweries API, see the documentation at https:\\/\\/www.openbrewerydb.org\\/documentation\"}",
     "size": 115,
-    "duration": 584719,
+    "duration": 1330598,
     "raw": {
       "method": "GET",
       "url": "https://api.openbrewerydb.org/v1/breweries?by_type=%7B%7B%40random-brewery%7Cbody.brewery_type%7D%7D\u0026per_page=10",
@@ -121,56 +121,56 @@
     },
     "trace": {
       "logs": [
-        "[20:58:03.513Z] Preparing request to https://api.openbrewerydb.org/v1/breweries",
-        "[20:58:03.513Z] GET https://api.openbrewerydb.org/v1/breweries",
-        "[20:58:03.513Z] DNS lookup: api.openbrewerydb.org",
-        "[20:58:03.519Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3121::2",
-        "[20:58:03.519Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3120::2",
-        "[20:58:03.519Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.97.2",
-        "[20:58:03.519Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.96.2",
-        "[20:58:03.519Z] Trying [2a06:98c1:3121::2]:443... (tcp)",
-        "[20:58:03.534Z] Connected to api.openbrewerydb.org ([2a06:98c1:3121::2]:443)",
-        "[20:58:03.534Z] TLS handshake started",
-        "[20:58:03.580Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
-        "[20:58:03.580Z] Server certificate:",
-        "[20:58:03.580Z]   subject: CN=api.openbrewerydb.org",
-        "[20:58:03.580Z]   start date: Mar 20 17:44:40 2026 GMT",
-        "[20:58:03.580Z]   expire date: Jun 18 18:44:34 2026 GMT",
-        "[20:58:03.580Z]   issuer: WE1",
-        "[20:58:03.805Z] ↳ Redirect: 302 Found",
-        "[20:58:03.806Z] DNS lookup: api.openbrewerydb.org",
-        "[20:58:03.809Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3120::2",
-        "[20:58:03.809Z] DNS lookup: api.openbrewerydb.org -\u003e 2a06:98c1:3121::2",
-        "[20:58:03.809Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.96.2",
-        "[20:58:03.809Z] DNS lookup: api.openbrewerydb.org -\u003e 188.114.97.2",
-        "[20:58:03.809Z] Trying [2a06:98c1:3120::2]:443... (tcp)",
-        "[20:58:03.823Z] Connected to api.openbrewerydb.org ([2a06:98c1:3120::2]:443)",
-        "[20:58:03.823Z] TLS handshake started",
-        "[20:58:03.867Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
-        "[20:58:03.867Z] Server certificate:",
-        "[20:58:03.867Z]   subject: CN=api.openbrewerydb.org",
-        "[20:58:03.867Z]   start date: Mar 20 17:44:40 2026 GMT",
-        "[20:58:03.867Z]   expire date: Jun 18 18:44:34 2026 GMT",
-        "[20:58:03.867Z]   issuer: WE1",
-        "[20:58:04.096Z] HTTP/2.0 200 OK",
-        "[20:58:04.096Z] Request completed in 584 ms"
+        "[09:30:56.414Z] Preparing request to https://api.openbrewerydb.org/v1/breweries",
+        "[09:30:56.414Z] GET https://api.openbrewerydb.org/v1/breweries",
+        "[09:30:56.414Z] DNS lookup: api.openbrewerydb.org",
+        "[09:30:56.450Z] DNS lookup: api.openbrewerydb.org -\u003e 104.21.69.63",
+        "[09:30:56.450Z] DNS lookup: api.openbrewerydb.org -\u003e 172.67.205.208",
+        "[09:30:56.450Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3032::ac43:cdd0",
+        "[09:30:56.450Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3030::6815:453f",
+        "[09:30:56.450Z] Trying 104.21.69.63:443... (tcp)",
+        "[09:30:56.475Z] Connected to api.openbrewerydb.org (104.21.69.63:443)",
+        "[09:30:56.475Z] TLS handshake started",
+        "[09:30:56.515Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
+        "[09:30:56.515Z] Server certificate:",
+        "[09:30:56.515Z]   subject: CN=api.openbrewerydb.org",
+        "[09:30:56.515Z]   start date: Mar 20 17:44:40 2026 GMT",
+        "[09:30:56.515Z]   expire date: Jun 18 18:44:34 2026 GMT",
+        "[09:30:56.515Z]   issuer: WE1",
+        "[09:30:57.338Z] ↳ Redirect: 302 Found",
+        "[09:30:57.338Z] DNS lookup: api.openbrewerydb.org",
+        "[09:30:57.360Z] DNS lookup: api.openbrewerydb.org -\u003e 172.67.205.208",
+        "[09:30:57.360Z] DNS lookup: api.openbrewerydb.org -\u003e 104.21.69.63",
+        "[09:30:57.360Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3032::ac43:cdd0",
+        "[09:30:57.360Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3030::6815:453f",
+        "[09:30:57.360Z] Trying 172.67.205.208:443... (tcp)",
+        "[09:30:57.386Z] Connected to api.openbrewerydb.org (172.67.205.208:443)",
+        "[09:30:57.386Z] TLS handshake started",
+        "[09:30:57.417Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
+        "[09:30:57.417Z] Server certificate:",
+        "[09:30:57.417Z]   subject: CN=api.openbrewerydb.org",
+        "[09:30:57.417Z]   start date: Mar 20 17:44:40 2026 GMT",
+        "[09:30:57.417Z]   expire date: Jun 18 18:44:34 2026 GMT",
+        "[09:30:57.417Z]   issuer: WE1",
+        "[09:30:57.744Z] HTTP/2.0 200 OK",
+        "[09:30:57.744Z] Request completed in 1330 ms"
       ],
       "timings": [
         {
           "label": "DNS Lookup",
-          "duration": 5
+          "duration": 36
         },
         {
           "label": "TCP Connect",
-          "duration": 15
+          "duration": 24
         },
         {
           "label": "TLS Handshake",
-          "duration": 45
+          "duration": 40
         },
         {
           "label": "Waiting (TTFB)",
-          "duration": 224
+          "duration": 822
         },
         {
           "label": "↳ 302 Found",
@@ -178,19 +178,19 @@
         },
         {
           "label": "DNS Lookup",
-          "duration": 3
+          "duration": 21
         },
         {
           "label": "TCP Connect",
-          "duration": 13
+          "duration": 26
         },
         {
           "label": "TLS Handshake",
-          "duration": 44
+          "duration": 31
         },
         {
           "label": "Waiting (TTFB)",
-          "duration": 229
+          "duration": 327
         },
         {
           "label": "Transfer",
@@ -198,11 +198,11 @@
         },
         {
           "label": "Total",
-          "duration": 584
+          "duration": 1330
         }
       ]
     }
   },
   "createdAt": "2026-04-18T20:58:04.1Z",
-  "updatedAt": "2026-04-18T22:58:04.102754883+02:00"
+  "updatedAt": "2026-04-20T11:30:57.74471353+02:00"
 }
