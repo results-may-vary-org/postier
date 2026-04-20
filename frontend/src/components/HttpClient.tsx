@@ -508,6 +508,32 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [saveRequest]);
 
+  // Use refs so Ctrl+Enter / Ctrl+Shift+C handlers never go stale
+  const sendRequestRef = useRef(sendRequest);
+  useEffect(() => { sendRequestRef.current = sendRequest; });
+
+  const responseRef = useRef(response);
+  useEffect(() => { responseRef.current = response; });
+
+  // Handle Ctrl+Enter: send the current request
+  // Handle Ctrl+Shift+C: copy raw response body to clipboard
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && !e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        sendRequestRef.current();
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        const rawBody = responseRef.current?.body;
+        if (rawBody) navigator.clipboard.writeText(rawBody);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   useLayoutEffect(() => {
     calculateResponseAreaHeight();
     window.addEventListener("resize", calculateResponseAreaHeight);
@@ -566,6 +592,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
           <Button
             onClick={sendRequest}
             disabled={!url || loading}
+            title="Send request (Ctrl+Enter)"
           >
             <PaperPlaneIcon />
             {loading ? 'Sending...' : 'Send'}

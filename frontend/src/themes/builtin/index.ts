@@ -1,5 +1,7 @@
 import type { PostierTheme } from '../types';
 import { defaultTheme } from './default';
+import { postierLight } from './postier-light';
+import { postierDark } from './postier-dark';
 import { catppuccinMocha } from './catppuccin-mocha';
 import { catppuccinMacchiato } from './catppuccin-macchiato';
 import { catppuccinFrappe } from './catppuccin-frappe';
@@ -13,6 +15,8 @@ export { defaultTheme };
 /** All themes bundled with the app, in display order. */
 export const BUILTIN_THEMES: PostierTheme[] = [
   defaultTheme,
+  postierLight,
+  postierDark,
   catppuccinMocha,
   catppuccinMacchiato,
   catppuccinFrappe,
