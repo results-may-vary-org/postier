@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — Postier HTTP Client</title>
+  <meta name="description" content="Complete documentation for Postier — getting started, request builder, response viewer, HTTP trace timeline, dependency graph, environments, collections, and theming.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jacquard+12&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==================== NAVIGATION ==================== -->
+  <nav class="nav scrolled" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <span class="nav__logo-mark"></span>
+        POSTIER
+      </a>
+      <ul class="nav__links">
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="docs.html" style="color: var(--amber);">Docs</a></li>
+        <li>
+          <a href="https://github.com/results-may-vary-org/postier" target="_blank" rel="noopener" class="nav__cta">
+            <i data-lucide="github"></i>
+            GitHub
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ==================== DOCS HERO ==================== -->
+  <div class="docs-hero">
+    <div class="container">
+      <span class="label docs-hero__label">Documentation</span>
+      <h1 class="docs-hero__title">Postier Documentation</h1>
+      <p class="docs-hero__desc">
+        Everything you need to install, configure, and get the most out of Postier —
+        from your first request to chained dependency graphs and custom themes.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== DOCS LAYOUT ==================== -->
+  <div class="docs-layout">
+
+    <!-- Sidebar -->
+    <aside class="docs-sidebar" id="docs-sidebar">
+
+      <div class="docs-sidebar__group">
+        <div class="docs-sidebar__group-label">Getting Started</div>
+        <a href="#install" class="docs-sidebar__link active">Installation</a>
+        <a href="#quickstart" class="docs-sidebar__link">Quick Start</a>
+        <a href="#collections" class="docs-sidebar__link">Collections</a>
+      </div>
+
+      <div class="docs-sidebar__group">
+        <div class="docs-sidebar__group-label">Sending Requests</div>
+        <a href="#requests" class="docs-sidebar__link">Request Builder</a>
+        <a href="#body" class="docs-sidebar__link">Body Types</a>
+        <a href="#env" class="docs-sidebar__link">Environment Variables</a>
+        <a href="#secrets" class="docs-sidebar__link">Secret Masking</a>
+        <a href="#redirects" class="docs-sidebar__link">Redirects</a>
+      </div>
+
+      <div class="docs-sidebar__group">
+        <div class="docs-sidebar__group-label">Reading Responses</div>
+        <a href="#response" class="docs-sidebar__link">Response Viewer</a>
+        <a href="#timeline" class="docs-sidebar__link">HTTP Trace &amp; Timeline</a>
+        <a href="#export" class="docs-sidebar__link">Export Formats</a>
+      </div>
+
+      <div class="docs-sidebar__group">
+        <div class="docs-sidebar__group-label">Advanced</div>
+        <a href="#graph" class="docs-sidebar__link">Dependency Graph</a>
+        <a href="#inject" class="docs-sidebar__link">Inject Syntax</a>
+        <a href="#themes" class="docs-sidebar__link">Themes</a>
+      </div>
+
+      <div class="docs-sidebar__group">
+        <div class="docs-sidebar__group-label">Reference</div>
+        <a href="#file-format" class="docs-sidebar__link">.postier File Format</a>
+        <a href="#env-format" class="docs-sidebar__link">.postier.env Format</a>
+        <a href="#shortcuts" class="docs-sidebar__link">Keyboard Shortcuts</a>
+      </div>
+
+    </aside>
+
+    <!-- Main content -->
+    <main class="docs-content">
+
+      <!-- =========== INSTALL =========== -->
+      <div class="docs-section" id="install">
+        <h2>Installation</h2>
+        <p>
+          Postier is a native desktop application built with <a href="https://wails.io" target="_blank" rel="noopener" style="color:var(--amber)">Wails</a>
+          (Go + React). Pre-built packages are available for all major platforms.
+        </p>
+
+        <h3>Download a release</h3>
+        <p>
+          Head to the
+          <a href="https://github.com/results-may-vary-org/postier/releases" target="_blank" rel="noopener" style="color:var(--amber)">GitHub releases page</a>
+          and grab the package for your platform:
+        </p>
+        <ul>
+          <li><strong style="color:var(--sand)">Linux</strong> — <code>.deb</code>, <code>.rpm</code>, <code>.apk</code></li>
+          <li><strong style="color:var(--sand)">Windows</strong> — <code>.exe</code> installer</li>
+          <li><strong style="color:var(--sand)">macOS</strong> — <code>.dmg</code></li>
+        </ul>
+
+        <h3>Build from source</h3>
+        <p>Prerequisites: Go 1.23+, Node.js with npm, and the Wails CLI.</p>
+        <pre class="docs-codeblock"><span class="c-dim"># Install Wails CLI</span>
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+<span class="c-dim"># Clone the repo</span>
+git clone https://github.com/results-may-vary-org/postier.git
+cd postier
+
+<span class="c-dim"># Install frontend dependencies</span>
+npm install --prefix frontend
+
+<span class="c-dim"># Build</span>
+wails build</pre>
+
+        <div class="docs-callout">
+          <p>For local development with hot-reload, use <code>wails dev</code> instead of <code>wails build</code>.</p>
+        </div>
+      </div>
+
+      <!-- =========== QUICKSTART =========== -->
+      <div class="docs-section" id="quickstart">
+        <h2>Quick Start</h2>
+        <p>
+          Launch Postier. You'll see a split pane: the left sidebar for your collections
+          and the main area for composing requests.
+        </p>
+        <ol style="list-style: decimal; padding-left: 1.5rem; color: var(--sand-dim); font-size: 0.9375rem; line-height: 1.75; margin-bottom: 1rem;">
+          <li style="margin-bottom: 0.5rem;">Click <strong style="color:var(--sand)">New File</strong> in the sidebar to create a request file.</li>
+          <li style="margin-bottom: 0.5rem;">Select a method (GET, POST, etc.) and enter a URL.</li>
+          <li style="margin-bottom: 0.5rem;">Add headers, query params or a body if needed.</li>
+          <li style="margin-bottom: 0.5rem;">Press <kbd style="background:var(--surface-2);border:1px solid var(--border-hi);padding:0.1em 0.4em;font-size:0.8em;">Send</kbd> or hit <code>Ctrl+Enter</code>.</li>
+          <li>Inspect the response in the tabs on the right: Body, Headers, Cookies, Request, Timeline.</li>
+        </ol>
+        <p>Requests are auto-saved by default when you hit send.</p>
+      </div>
+
+      <!-- =========== COLLECTIONS =========== -->
+      <div class="docs-section" id="collections">
+        <h2>Collections</h2>
+        <p>
+          Collections are simply local folders on your filesystem. Postier imports them as-is —
+          no sync, no cloud, no lock-in.
+        </p>
+        <h3>Adding a collection</h3>
+        <p>
+          Click the <strong style="color:var(--sand)">+ Collection</strong> button in the sidebar and select a folder.
+          Postier will display all <code>.postier</code> files in that folder tree.
+        </p>
+        <h3>Organising requests</h3>
+        <p>
+          Create, rename, and delete files and folders directly from the sidebar tree.
+          The currently open file is highlighted. Requests are stored as plain JSON —
+          commit them to git like any other project file.
+        </p>
+        <div class="docs-callout docs-callout--blue">
+          <p>
+            Collections are great for sharing API examples with teammates.
+            Just commit your <code>.postier</code> files and <code>.postier.env</code> (without real secrets) to git.
+          </p>
+        </div>
+      </div>
+
+      <!-- =========== REQUEST BUILDER =========== -->
+      <div class="docs-section" id="requests">
+        <h2>Request Builder</h2>
+        <p>
+          The request builder gives you full control over every aspect of an HTTP request.
+        </p>
+
+        <h3>Method &amp; URL</h3>
+        <p>
+          Select a method from the dropdown: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS.
+          Enter the full URL including scheme. Query parameters can be added inline or
+          via the Params tab.
+        </p>
+
+        <h3>Headers</h3>
+        <p>
+          Add any number of request headers as key-value pairs. Toggle individual headers on/off
+          without deleting them. Common headers like <code>Content-Type</code> are set automatically
+          based on the body type you select.
+        </p>
+
+        <h3>Query Parameters</h3>
+        <p>
+          Use the Params tab to manage query string parameters as structured key-value pairs.
+          They sync with the URL bar in real time.
+        </p>
+      </div>
+
+      <!-- =========== BODY TYPES =========== -->
+      <div class="docs-section" id="body">
+        <h2>Body Types</h2>
+        <p>Postier supports the following request body types:</p>
+
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Content-Type</th>
+              <th>Use case</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>JSON</code></td>
+              <td><code>application/json</code></td>
+              <td>REST APIs, GraphQL</td>
+            </tr>
+            <tr>
+              <td><code>XML</code></td>
+              <td><code>application/xml</code></td>
+              <td>SOAP, legacy APIs</td>
+            </tr>
+            <tr>
+              <td><code>Text</code></td>
+              <td><code>text/plain</code></td>
+              <td>Plain text payloads</td>
+            </tr>
+            <tr>
+              <td><code>SPARQL</code></td>
+              <td><code>application/sparql-query</code></td>
+              <td>Semantic web / RDF endpoints</td>
+            </tr>
+            <tr>
+              <td><code>None</code></td>
+              <td><em>no body</em></td>
+              <td>GET, HEAD, DELETE requests</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- =========== ENV VARS =========== -->
+      <div class="docs-section" id="env">
+        <h2>Environment Variables</h2>
+        <p>
+          Postier supports environment variables via a <code>.postier.env</code> file placed
+          at the root of your collection folder.
+        </p>
+        <h3>Syntax</h3>
+        <p>
+          Use <code>{{VARIABLE_NAME}}</code> anywhere in URL, headers, query params,
+          or body. Variables are resolved at send time.
+        </p>
+        <pre class="docs-codeblock"><span class="c-dim">// .postier.env (JSON file)</span>
+{
+  <span class="c-amber">"BASE_URL"</span>: <span class="c-green">"https://api.example.com"</span>,
+  <span class="c-amber">"API_KEY"</span>:  <span class="c-green">"sk-live-..."</span>,
+  <span class="c-amber">"USER_ID"</span>:  <span class="c-green">"42"</span>
+}</pre>
+        <p>Then in your request URL:</p>
+        <pre class="docs-codeblock"><span class="c-amber">{{BASE_URL}}</span>/users/<span class="c-amber">{{USER_ID}}</span>/posts</pre>
+      </div>
+
+      <!-- =========== SECRETS =========== -->
+      <div class="docs-section" id="secrets">
+        <h2>Secret Masking</h2>
+        <p>
+          Any key whose name contains <code>key</code>, <code>token</code>, <code>secret</code>,
+          <code>password</code>, <code>pass</code>, <code>auth</code>, <code>credential</code>,
+          or <code>private</code> (case-insensitive) is automatically masked in the UI with a
+          reveal toggle.
+        </p>
+        <p>Examples: <code>API_KEY</code>, <code>ACCESS_TOKEN</code>, <code>DB_PASSWORD</code>, <code>CLIENT_SECRET</code>.</p>
+        <div class="docs-callout">
+          <p>Masking is purely visual — the value is still sent in the request as-is. It just prevents shoulder-surfing or accidental screenshots.</p>
+        </div>
+      </div>
+
+      <!-- =========== REDIRECTS =========== -->
+      <div class="docs-section" id="redirects">
+        <h2>Redirects</h2>
+        <p>
+          A toggle in the request bar lets you control whether Postier follows 3xx redirects.
+          When disabled, you see the raw redirect response. When enabled, all redirect hops
+          appear in the timing breakdown of the Timeline tab.
+        </p>
+      </div>
+
+      <!-- =========== RESPONSE VIEWER =========== -->
+      <div class="docs-section" id="response">
+        <h2>Response Viewer</h2>
+        <p>
+          After sending a request, the response area shows five tabs:
+        </p>
+        <ul>
+          <li><strong style="color:var(--sand)">Body</strong> — Response body with Raw / JSON toggle and syntax highlighting. Click any JSON path to copy it as an inject reference (<code>{{@filename|body.path}}</code>).</li>
+          <li><strong style="color:var(--sand)">Headers</strong> — All response headers as a structured list.</li>
+          <li><strong style="color:var(--sand)">Cookies</strong> — Cookies set by the response.</li>
+          <li><strong style="color:var(--sand)">Request</strong> — The exact request Postier sent, formatted as HTTP, cURL, wget, or HTTPie.</li>
+          <li><strong style="color:var(--sand)">Timeline</strong> — Full HTTP trace log. See below.</li>
+        </ul>
+        <p>
+          At the top of the response area: HTTP status code (color-coded), total time, and response size.
+          Timing breakdown per phase (DNS, TCP, TLS, TTFB, Transfer) is visible alongside the timeline.
+        </p>
+      </div>
+
+      <!-- =========== TIMELINE =========== -->
+      <div class="docs-section" id="timeline">
+        <h2>HTTP Trace &amp; Timeline</h2>
+        <p>
+          The Timeline tab shows a chronological log of every step in the HTTP connection.
+          Each line is timestamped to the millisecond.
+        </p>
+        <p>Logged events include:</p>
+        <ul>
+          <li>DNS lookup (resolved address)</li>
+          <li>TCP connection established</li>
+          <li>TLS handshake with protocol version, cipher suite and certificate details</li>
+          <li>The request line and method sent</li>
+          <li>First byte received (TTFB)</li>
+          <li>Full transfer complete</li>
+          <li>Each redirect hop (if redirects are enabled)</li>
+        </ul>
+        <p>HTTP methods are color-coded in the timeline. Status codes are colored by class: 2xx green, 3xx blue, 4xx orange, 5xx red.</p>
+        <pre class="docs-codeblock"><span class="c-dim">[10:24:01.012Z]</span> DNS lookup: api.example.com → 93.184.216.34
+<span class="c-dim">[10:24:01.034Z]</span> TCP connected
+<span class="c-dim">[10:24:01.058Z]</span> TLS handshake: TLS 1.3, AES_256_GCM_SHA384
+<span class="c-dim">[10:24:01.059Z]</span> <span class="c-green">GET</span> https://api.example.com/users/42
+<span class="c-dim">[10:24:01.112Z]</span> HTTP/2.0 <span class="c-green">200 OK</span></pre>
+      </div>
+
+      <!-- =========== EXPORT FORMATS =========== -->
+      <div class="docs-section" id="export">
+        <h2>Export Formats</h2>
+        <p>
+          The <strong style="color:var(--sand)">Request</strong> tab in the response area lets you view and copy
+          the exact request that was sent in four formats:
+        </p>
+        <ul>
+          <li><strong style="color:var(--sand)">HTTP</strong> — Raw wire format (e.g. <code>GET /path HTTP/1.1</code>)</li>
+          <li><strong style="color:var(--sand)">cURL</strong> — Shell command using <code>curl</code></li>
+          <li><strong style="color:var(--sand)">wget</strong> — Shell command using <code>wget</code></li>
+          <li><strong style="color:var(--sand)">HTTPie</strong> — <code>http</code> CLI command format</li>
+        </ul>
+        <p>Click the copy button to copy the formatted output to your clipboard.</p>
+      </div>
+
+      <!-- =========== DEPENDENCY GRAPH =========== -->
+      <div class="docs-section" id="graph">
+        <h2>Dependency Graph</h2>
+        <p>
+          The dependency graph lets you chain requests together — the output of one
+          request feeds into the input of another.
+        </p>
+        <h3>How it works</h3>
+        <p>
+          Use inject references (see below) to declare that a field in one request
+          depends on a value from another request's response. Postier builds a directed
+          graph from these references.
+        </p>
+        <p>
+          Click <strong style="color:var(--sand)">Run all</strong> in the collection sidebar.
+          Postier executes requests in dependency order, rendering a live graph as it goes.
+          Independent chains are colored differently so you can see them at a glance.
+        </p>
+        <p>
+          A complete demo is available in the
+          <a href="https://github.com/results-may-vary-org/postier/tree/main/graph-example" target="_blank" rel="noopener" style="color:var(--amber)">graph-example/</a>
+          folder — it uses the Open Brewery DB public API and needs no auth.
+        </p>
+      </div>
+
+      <!-- =========== INJECT SYNTAX =========== -->
+      <div class="docs-section" id="inject">
+        <h2>Inject Syntax</h2>
+        <p>
+          Use <code>{{@filename|source}}</code> anywhere in a request field to inject
+          a value from another request's response.
+        </p>
+
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>What it injects</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>body</code></td>
+              <td>The full raw response body</td>
+              <td><code>{{@login|body}}</code></td>
+            </tr>
+            <tr>
+              <td><code>body.path</code></td>
+              <td>A field from a JSON body (dot notation)</td>
+              <td><code>{{@login|body.token}}</code></td>
+            </tr>
+            <tr>
+              <td><code>body[0].field</code></td>
+              <td>A field from a JSON array body</td>
+              <td><code>{{@list|body[0].id}}</code></td>
+            </tr>
+            <tr>
+              <td><code>headers.Name</code></td>
+              <td>A response header value</td>
+              <td><code>{{@auth|headers.X-Token[0]}}</code></td>
+            </tr>
+            <tr>
+              <td><code>status</code></td>
+              <td>The HTTP status code as a string</td>
+              <td><code>{{@check|status}}</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="docs-callout">
+          <p>
+            <code>body.path</code> traversal requires the source response to be valid JSON.
+            <code>body</code> alone works with any content type.
+          </p>
+        </div>
+
+        <pre class="docs-codeblock"><span class="c-dim">// In get-user.postier — depends on login.postier</span>
+{
+  "url": <span class="c-amber">"{{BASE_URL}}/users/{{@login|body.userId}}"</span>,
+  "headers": {
+    "Authorization": <span class="c-amber">"Bearer {{@login|body.token}}"</span>
+  }
+}</pre>
+      </div>
+
+      <!-- =========== THEMES =========== -->
+      <div class="docs-section" id="themes">
+        <h2>Themes</h2>
+        <p>Postier ships with a set of built-in themes and supports fully custom JSON themes.</p>
+
+        <h3>Built-in themes</h3>
+        <ul>
+          <li>Catppuccin Mocha</li>
+          <li>Catppuccin Macchiato</li>
+          <li>Catppuccin Frappé</li>
+          <li>Catppuccin Latte</li>
+          <li>Rosé Pine (Main, Moon, Dawn)</li>
+        </ul>
+
+        <h3>Custom themes</h3>
+        <p>
+          Drop a <code>.json</code> theme file in a local folder, add that folder as a custom theme
+          source in settings, and reload — no restart needed. See
+          <a href="https://github.com/results-may-vary-org/postier/blob/main/docs/themes.md" target="_blank" rel="noopener" style="color:var(--amber)">docs/themes.md</a>
+          for the theme file format.
+        </p>
+      </div>
+
+      <!-- =========== .POSTIER FILE FORMAT =========== -->
+      <div class="docs-section" id="file-format">
+        <h2>.postier File Format</h2>
+        <p>
+          Each request is stored as a <code>.postier</code> JSON file. The format is stable
+          and human-readable:
+        </p>
+        <pre class="docs-codeblock">{
+  <span class="c-amber">"method"</span>: <span class="c-green">"POST"</span>,
+  <span class="c-amber">"url"</span>: <span class="c-green">"{{BASE_URL}}/users"</span>,
+  <span class="c-amber">"headers"</span>: {
+    <span class="c-amber">"Content-Type"</span>: <span class="c-green">"application/json"</span>,
+    <span class="c-amber">"Authorization"</span>: <span class="c-green">"Bearer {{API_KEY}}"</span>
+  },
+  <span class="c-amber">"params"</span>: {},
+  <span class="c-amber">"bodyType"</span>: <span class="c-green">"json"</span>,
+  <span class="c-amber">"body"</span>: <span class="c-green">"{\n  \"name\": \"Ada Lovelace\"\n}"</span>,
+  <span class="c-amber">"followRedirects"</span>: <span class="c-blue">true</span>
+}</pre>
+      </div>
+
+      <!-- =========== .POSTIER.ENV FORMAT =========== -->
+      <div class="docs-section" id="env-format">
+        <h2>.postier.env File Format</h2>
+        <p>
+          A flat JSON object placed at the collection root. Keys are variable names,
+          values are strings.
+        </p>
+        <pre class="docs-codeblock">{
+  <span class="c-amber">"BASE_URL"</span>:    <span class="c-green">"https://api.example.com/v2"</span>,
+  <span class="c-amber">"API_KEY"</span>:     <span class="c-green">"sk-..."</span>,
+  <span class="c-amber">"TIMEOUT"</span>:     <span class="c-green">"30"</span>
+}</pre>
+        <div class="docs-callout">
+          <p>Add <code>.postier.env</code> to your <code>.gitignore</code> to avoid committing real secrets. Commit a <code>.postier.env.example</code> instead.</p>
+        </div>
+      </div>
+
+      <!-- =========== KEYBOARD SHORTCUTS =========== -->
+      <div class="docs-section" id="shortcuts">
+        <h2>Keyboard Shortcuts</h2>
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Shortcut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Send request</td>
+              <td><code>Ctrl + Enter</code></td>
+            </tr>
+            <tr>
+              <td>Copy response body</td>
+              <td><code>Ctrl + Shift + C</code></td>
+            </tr>
+            <tr>
+              <td>Toggle sidebar</td>
+              <td><code>Ctrl + B</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <div class="footer__brand">
+          <a href="index.html" class="footer__logo">POSTIER</a>
+          <p class="footer__tagline">
+            A lightweight, no-bullshit HTTP client for developers
+            who value their time and privacy.
+          </p>
+        </div>
+        <nav class="footer__nav" aria-label="Footer navigation">
+          <div class="footer__col">
+            <h4>Product</h4>
+            <ul>
+              <li><a href="index.html#features">Features</a></li>
+              <li><a href="https://github.com/results-may-vary-org/postier/releases" target="_blank" rel="noopener">Download</a></li>
+              <li><a href="https://github.com/users/bouteillerAlan/projects/4/views/2" target="_blank" rel="noopener">Roadmap</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <h4>Docs</h4>
+            <ul>
+              <li><a href="#install">Installation</a></li>
+              <li><a href="#requests">Request Builder</a></li>
+              <li><a href="#timeline">Timeline</a></li>
+              <li><a href="#graph">Graph</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <h4>Project</h4>
+            <ul>
+              <li><a href="https://github.com/results-may-vary-org/postier" target="_blank" rel="noopener">GitHub</a></li>
+              <li><a href="https://rmv.a2n.dev/" target="_blank" rel="noopener">By RMV</a></li>
+              <li><a href="https://ko-fi.com/a2n00" target="_blank" rel="noopener">Support the project</a></li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+      <div class="footer__bottom">
+        <span>Made with intention by <a href="https://rmv.a2n.dev/" target="_blank" rel="noopener">RMV</a></span>
+        <span>
+          Open-source &mdash;
+          <a href="https://github.com/results-may-vary-org/postier/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
