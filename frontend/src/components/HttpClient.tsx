@@ -1,4 +1,4 @@
-import {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect, useMemo} from "react";
+import React, {ChangeEvent, useCallback, useLayoutEffect, useRef, useState, useEffect, useMemo} from "react";
 import { MakeRequest, LoadPostierRequest, SavePostierRequest } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 import { PlusIcon, TrashIcon, PaperPlaneIcon, CheckCircledIcon, CrossCircledIcon, CopyIcon, CheckIcon } from "@radix-ui/react-icons";
@@ -743,9 +743,7 @@ export function HttpClient({ sidebarVisible, onToggleSidebar }: HttpClientProps)
               {!response?.trace?.logs?.length ? (
                 <Text color="gray" size="2">Send a request to see the timeline.</Text>
               ) : (
-                <pre style={{ margin: 0, fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {response.trace.logs.join('\n')}
-                </pre>
+                <TimelineViewer logs={response.trace.logs} />
               )}
             </Box>
           </Tabs.Content>
@@ -867,8 +865,8 @@ function RequestViewer({ raw, effective }: { raw: main.EffectiveRequest; effecti
     <Flex direction="column" gap="2">
       <Flex justify="between" align="center" wrap="wrap" gap="2">
         <SegmentedControl.Root size="1" value={format} onValueChange={v => setFormat(v as ReqFormat)}>
-          <SegmentedControl.Item value="curl">cURL</SegmentedControl.Item>
           <SegmentedControl.Item value="http">HTTP</SegmentedControl.Item>
+          <SegmentedControl.Item value="curl">cURL</SegmentedControl.Item>
           <SegmentedControl.Item value="wget">wget</SegmentedControl.Item>
           <SegmentedControl.Item value="httpie">HTTPie</SegmentedControl.Item>
         </SegmentedControl.Root>
@@ -881,9 +879,98 @@ function RequestViewer({ raw, effective }: { raw: main.EffectiveRequest; effecti
           </Button>
         </Flex>
       </Flex>
-      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px', fontFamily: 'monospace' }}>
+      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: "'Noto Sans', sans-serif", fontWeight: 400, fontSize: '1rem' }}>
         {text}
       </pre>
     </Flex>
+  );
+}
+
+// ── TimelineViewer ────────────────────────────────────────────────────────────
+
+/** Maps HTTP method names to the same accent colors used across the UI. */
+const TIMELINE_METHOD_COLORS: Record<string, string> = {
+  GET:     'var(--green-11)',
+  POST:    'var(--yellow-11)',
+  PUT:     'var(--orange-11)',
+  DELETE:  'var(--red-11)',
+  PATCH:   'var(--purple-11)',
+  HEAD:    'var(--blue-11)',
+  OPTIONS: 'var(--gray-11)',
+};
+
+const METHOD_RE = new RegExp(`^(${Object.keys(TIMELINE_METHOD_COLORS).join('|')})(\\s.*)?$`);
+const TS_RE     = /^(\[\d{2}:\d{2}:\d{2}\.\d{3}Z\]) ([\s\S]*)$/;
+const STATUS_RE = /^(HTTP\/\S+)\s+(\d{3})(.*)?$/;
+
+const STATUS_COLORS: Record<string, string> = {
+  '2': 'var(--green-11)',
+  '3': 'var(--blue-11)',
+  '4': 'var(--orange-11)',
+  '5': 'var(--red-11)',
+};
+
+/**
+ * Renders trace log lines with coloured timestamps, HTTP method tokens,
+ * and HTTP status codes using the same palette as the rest of the UI.
+ */
+function TimelineViewer({ logs }: { logs: string[] }) {
+  return (
+    <pre style={{
+      margin: 0,
+      fontSize: '1rem',
+      fontFamily: "'Noto Sans', sans-serif",
+      fontWeight: 400,
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      lineHeight: '1.5',
+    }}>
+      {logs.map((line, i) => {
+        const tsMatch = line.match(TS_RE);
+        const nl = i < logs.length - 1 ? '\n' : '';
+
+        if (!tsMatch) {
+          return <span key={i}>{line}{nl}</span>;
+        }
+
+        const [, ts, rest] = tsMatch;
+
+        let message: React.ReactNode;
+
+        const methodMatch = rest.match(METHOD_RE);
+        const statusMatch = rest.match(STATUS_RE);
+
+        if (methodMatch) {
+          const method = methodMatch[1];
+          const after  = methodMatch[2] ?? '';
+          message = (
+            <>
+              <span style={{ color: TIMELINE_METHOD_COLORS[method], fontWeight: 500 }}>{method}</span>
+              {after}
+            </>
+          );
+        } else if (statusMatch) {
+          const proto  = statusMatch[1];
+          const code   = statusMatch[2];
+          const suffix = statusMatch[3] ?? '';
+          const color  = STATUS_COLORS[code[0]] ?? 'var(--gray-11)';
+          message = (
+            <>
+              {proto}{' '}
+              <span style={{ color, fontWeight: 500 }}>{code}{suffix}</span>
+            </>
+          );
+        } else {
+          message = rest;
+        }
+
+        return (
+          <span key={i}>
+            <span style={{ color: 'var(--gray-9)' }}>{ts}</span>
+            {' '}{message}{nl}
+          </span>
+        );
+      })}
+    </pre>
   );
 }
