@@ -1,6 +1,6 @@
 {
   "name": "GET@api.openbrewerydb.org/v1/breweries/random",
-  "description": "Fetch a random brewery. Its brewery_type is injected into the next request.",
+  "description": "",
   "method": "GET",
   "url": "https://api.openbrewerydb.org/v1/breweries/random",
   "headers": {},
@@ -21,16 +21,16 @@
         "DYNAMIC"
       ],
       "Cf-Ray": [
-        "9ef3220e4925d337-CDG"
+        "9ef3aedbb9816cb2-CDG"
       ],
       "Content-Type": [
         "application/json"
       ],
       "Date": [
-        "Mon, 20 Apr 2026 09:30:55 GMT"
+        "Mon, 20 Apr 2026 11:07:02 GMT"
       ],
       "Last-Modified": [
-        "Mon, 20 Apr 2026 09:30:55 GMT"
+        "Mon, 20 Apr 2026 11:07:02 GMT"
       ],
       "Nel": [
         "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
@@ -39,17 +39,17 @@
         "strict-origin-when-cross-origin"
       ],
       "Report-To": [
-        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=P1pxs4HFwuy7%2F98gJRPTVgb3P65%2BUPWq2txEfcYW%2B09N6p5tMPIm9em5wgK%2BIXNPZfv3VnO%2F7uOwoimyo9b1LF%2Fbr1DH0lQXj5sqUPhqg4VpB%2BeOHRTkto7BrCdveIG2kxrItY5D5j0%3D\"}]}"
+        "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=LQov756CoTN9ow2boZoSK6QuBghCwKVS%2F8gXJXUVKu7gXJzOl%2FnynrptOMfsNubFMzMmwD6K6bUMC6Ww6b%2FmhrDjxJH4SqwFNMjalAFPoXMc%2B%2FUrkoMFQg3WnWhFIZtiT0jn0ZaPek8%3D\"}]}"
       ],
       "Server": [
         "cloudflare"
       ],
       "Server-Timing": [
         "cfCacheStatus;desc=\"DYNAMIC\"",
-        "cfEdge;dur=12,cfOrigin;dur=543"
+        "cfEdge;dur=7,cfOrigin;dur=211"
       ],
       "Set-Cookie": [
-        "__cf_bm=fsD96ze8Tt.pH6DLVtH2.Vrmbq7AnRETJIW0i5V4IK8-1776677455.0993075-1.0.1.1-vczZdOiuamzT3ZegwnIdbENNRKhoTdwAF_4IElcrSZkLqXEXqVcAWLDANtDb8nXScd8sYhgy_i1zlUnoo6a57KC.BtpA8rFXAtn60RIumVN0_yF1A3sT7SgMh2mm._t4; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Mon, 20 Apr 2026 10:00:55 GMT"
+        "__cf_bm=E.JuXez36V3PfohEJzjucEF6FnX0_RCW8UuKs9h7qrA-1776683222.3658874-1.0.1.1-wN1uGjytDh6KJ_eNRiXrNIzgYJPyXzYINLtPq_0ufdClnPwvt8U13BHGtuUL8GeYAw46ln73vzUyk5757V6rq9Xsh4rAJRJZSZrnlDA7keuacSHIZl8KBOMKSvZsPeYk; HttpOnly; Secure; Path=/; Domain=api.openbrewerydb.org; Expires=Mon, 20 Apr 2026 11:37:02 GMT"
       ],
       "Strict-Transport-Security": [
         "max-age=31536000; includeSubDomains"
@@ -73,23 +73,23 @@
         "120"
       ],
       "X-Ratelimit-Remaining": [
-        "119"
+        "118"
       ]
     },
     "cookies": [
       {
         "name": "__cf_bm",
-        "value": "fsD96ze8Tt.pH6DLVtH2.Vrmbq7AnRETJIW0i5V4IK8-1776677455.0993075-1.0.1.1-vczZdOiuamzT3ZegwnIdbENNRKhoTdwAF_4IElcrSZkLqXEXqVcAWLDANtDb8nXScd8sYhgy_i1zlUnoo6a57KC.BtpA8rFXAtn60RIumVN0_yF1A3sT7SgMh2mm._t4",
+        "value": "E.JuXez36V3PfohEJzjucEF6FnX0_RCW8UuKs9h7qrA-1776683222.3658874-1.0.1.1-wN1uGjytDh6KJ_eNRiXrNIzgYJPyXzYINLtPq_0ufdClnPwvt8U13BHGtuUL8GeYAw46ln73vzUyk5757V6rq9Xsh4rAJRJZSZrnlDA7keuacSHIZl8KBOMKSvZsPeYk",
         "domain": "api.openbrewerydb.org",
         "path": "/",
-        "expires": "2026-04-20T10:00:55Z",
+        "expires": "2026-04-20T11:37:02Z",
         "secure": true,
         "httpOnly": true
       }
     ],
-    "body": "[{\"id\":\"ae5e5f5f-b96d-4251-880c-ae129319e48f\",\"name\":\"Titletown Brewing Co\",\"brewery_type\":\"brewpub\",\"address_1\":\"200 Dousman St\",\"address_2\":null,\"address_3\":null,\"city\":\"Green Bay\",\"state_province\":\"Wisconsin\",\"postal_code\":\"54303-2712\",\"country\":\"United States\",\"longitude\":-88.018517,\"latitude\":44.51892,\"phone\":\"9204372337\",\"website_url\":\"http:\\/\\/www.titletownbrewing.com\",\"state\":\"Wisconsin\",\"street\":\"200 Dousman St\"}]",
-    "size": 426,
-    "duration": 716584,
+    "body": "[{\"id\":\"105076f0-ca29-4fb5-8c91-73e1d7dbfb9d\",\"name\":\"Bismarck Brewing\",\"brewery_type\":\"brewpub\",\"address_1\":\"1100 Canada Ave Suite 1\",\"address_2\":null,\"address_3\":null,\"city\":\"Bismarck\",\"state_province\":\"North Dakota\",\"postal_code\":\"58503-1814\",\"country\":\"United States\",\"longitude\":-100.7737552,\"latitude\":46.86270313,\"phone\":null,\"website_url\":\"http:\\/\\/www.bismarckbrew.com\",\"state\":\"North Dakota\",\"street\":\"1100 Canada Ave Suite 1\"}]",
+    "size": 438,
+    "duration": 387845,
     "raw": {
       "method": "GET",
       "url": "https://api.openbrewerydb.org/v1/breweries/random",
@@ -104,41 +104,41 @@
     },
     "trace": {
       "logs": [
-        "[09:30:54.980Z] Preparing request to https://api.openbrewerydb.org/v1/breweries/random",
-        "[09:30:54.980Z] GET https://api.openbrewerydb.org/v1/breweries/random",
-        "[09:30:54.980Z] DNS lookup: api.openbrewerydb.org",
-        "[09:30:55.017Z] DNS lookup: api.openbrewerydb.org -\u003e 104.21.69.63",
-        "[09:30:55.017Z] DNS lookup: api.openbrewerydb.org -\u003e 172.67.205.208",
-        "[09:30:55.017Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3030::6815:453f",
-        "[09:30:55.017Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3032::ac43:cdd0",
-        "[09:30:55.017Z] Trying 104.21.69.63:443... (tcp)",
-        "[09:30:55.035Z] Connected to api.openbrewerydb.org (104.21.69.63:443)",
-        "[09:30:55.035Z] TLS handshake started",
-        "[09:30:55.072Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
-        "[09:30:55.072Z] Server certificate:",
-        "[09:30:55.072Z]   subject: CN=api.openbrewerydb.org",
-        "[09:30:55.072Z]   start date: Mar 20 17:44:40 2026 GMT",
-        "[09:30:55.072Z]   expire date: Jun 18 18:44:34 2026 GMT",
-        "[09:30:55.072Z]   issuer: WE1",
-        "[09:30:55.696Z] HTTP/2.0 200 OK",
-        "[09:30:55.696Z] Request completed in 716 ms"
+        "[11:07:02.243Z] Preparing request to https://api.openbrewerydb.org/v1/breweries/random",
+        "[11:07:02.243Z] GET https://api.openbrewerydb.org/v1/breweries/random",
+        "[11:07:02.243Z] DNS lookup: api.openbrewerydb.org",
+        "[11:07:02.278Z] DNS lookup: api.openbrewerydb.org -\u003e 104.21.69.63",
+        "[11:07:02.278Z] DNS lookup: api.openbrewerydb.org -\u003e 172.67.205.208",
+        "[11:07:02.278Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3032::ac43:cdd0",
+        "[11:07:02.278Z] DNS lookup: api.openbrewerydb.org -\u003e 2606:4700:3030::6815:453f",
+        "[11:07:02.278Z] Trying 104.21.69.63:443... (tcp)",
+        "[11:07:02.297Z] Connected to api.openbrewerydb.org (104.21.69.63:443)",
+        "[11:07:02.297Z] TLS handshake started",
+        "[11:07:02.356Z] SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256",
+        "[11:07:02.356Z] Server certificate:",
+        "[11:07:02.356Z]   subject: CN=api.openbrewerydb.org",
+        "[11:07:02.356Z]   start date: Mar 20 17:44:40 2026 GMT",
+        "[11:07:02.356Z]   expire date: Jun 18 18:44:34 2026 GMT",
+        "[11:07:02.356Z]   issuer: WE1",
+        "[11:07:02.630Z] HTTP/2.0 200 OK",
+        "[11:07:02.630Z] Request completed in 387 ms"
       ],
       "timings": [
         {
           "label": "DNS Lookup",
-          "duration": 36
+          "duration": 34
         },
         {
           "label": "TCP Connect",
-          "duration": 18
+          "duration": 19
         },
         {
           "label": "TLS Handshake",
-          "duration": 36
+          "duration": 59
         },
         {
           "label": "Waiting (TTFB)",
-          "duration": 624
+          "duration": 273
         },
         {
           "label": "Transfer",
@@ -146,11 +146,11 @@
         },
         {
           "label": "Total",
-          "duration": 716
+          "duration": 387
         }
       ]
     }
   },
-  "createdAt": "2026-04-18T00:00:00Z",
-  "updatedAt": "2026-04-20T11:30:55.697015206+02:00"
+  "createdAt": "2026-04-20T11:03:57.898Z",
+  "updatedAt": "2026-04-20T13:07:02.630829487+02:00"
 }
