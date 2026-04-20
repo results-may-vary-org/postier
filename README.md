@@ -1,5 +1,5 @@
 <p align="center">
-<img alt="logo postier" src="./web/assets/capmain.png" width="200"/>
+<img alt="logo postier" src="./assets/postier.png" width="200"/>
 </p>
 
 <h1 align="center">Postier <i>- a lightweight HTTP client</i></h1>
@@ -29,6 +29,10 @@ Anything you expect from this kind of tool plus:
  - timing breakdown per phase (DNS, TCP, TLS, TTFB, Transfer) with redirect indicators directly via the go backend
 
 See [`graph-example/`](graph-example/) for a ready-to-load demo using the Open Brewery DB API!
+
+<p align="center">
+<img alt="logo postier" src="./web/assets/capmain.png"/>
+</p>
 
 ## Getting Started
 
