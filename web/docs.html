@@ -105,7 +105,7 @@
       <div class="docs-section" id="install">
         <h2>Installation</h2>
         <p>
-          Postier is a native desktop application built with <a href="https://wails.io" target="_blank" rel="noopener" style="color:var(--amber)">Wails</a>
+          Postier is a desktop application built with <a href="https://wails.io" target="_blank" rel="noopener" style="color:var(--amber)">Wails</a>
           (Go + React). Pre-built packages are available for all major platforms.
         </p>
 
@@ -155,7 +155,7 @@ wails build</pre>
           <li style="margin-bottom: 0.5rem;">Press <kbd style="background:var(--surface-2);border:1px solid var(--border-hi);padding:0.1em 0.4em;font-size:0.8em;">Send</kbd> or hit <code>Ctrl+Enter</code>.</li>
           <li>Inspect the response in the tabs on the right: Body, Headers, Cookies, Request, Timeline.</li>
         </ol>
-        <p>Requests are auto-saved by default when you hit send.</p>
+        <p>Requests are auto-saved by default when you hit send. You can enable / disable that on the settings.</p>
       </div>
 
       <!-- =========== COLLECTIONS =========== -->
@@ -179,7 +179,7 @@ wails build</pre>
         <div class="docs-callout docs-callout--blue">
           <p>
             Collections are great for sharing API examples with teammates.
-            Just commit your <code>.postier</code> files and <code>.postier.env</code> (without real secrets) to git.
+            Just commit your <code>.postier</code> files to git.
           </p>
         </div>
       </div>
@@ -200,15 +200,14 @@ wails build</pre>
 
         <h3>Headers</h3>
         <p>
-          Add any number of request headers as key-value pairs. Toggle individual headers on/off
-          without deleting them. Common headers like <code>Content-Type</code> are set automatically
+          Add any number of request headers as key-value pairs. Common headers like <code>Content-Type</code> are set automatically
           based on the body type you select.
         </p>
 
         <h3>Query Parameters</h3>
         <p>
           Use the Params tab to manage query string parameters as structured key-value pairs.
-          They sync with the URL bar in real time.
+          They sync with the URL in real time at send time.
         </p>
       </div>
 
@@ -247,6 +246,11 @@ wails build</pre>
               <td>Semantic web / RDF endpoints</td>
             </tr>
             <tr>
+              <td><code>raw</code></td>
+              <td><em>you need to set it</em></td>
+              <td>Send a body type that doesn't exist yet in postier</td>
+            </tr>
+            <tr>
               <td><code>None</code></td>
               <td><em>no body</em></td>
               <td>GET, HEAD, DELETE requests</td>
@@ -269,9 +273,9 @@ wails build</pre>
         </p>
         <pre class="docs-codeblock"><span class="c-dim">// .postier.env (JSON file)</span>
 {
-  <span class="c-amber">"BASE_URL"</span>: <span class="c-green">"https://api.example.com"</span>,
-  <span class="c-amber">"API_KEY"</span>:  <span class="c-green">"sk-live-..."</span>,
-  <span class="c-amber">"USER_ID"</span>:  <span class="c-green">"42"</span>
+  <span class="c-amber">"BASE_URL"</span>: <span>"https://api.example.com"</span>,
+  <span class="c-amber">"API_KEY"</span>:  <span>"sk-live-..."</span>,
+  <span class="c-amber">"USER_ID"</span>:  <span>"42"</span>
 }</pre>
         <p>Then in your request URL:</p>
         <pre class="docs-codeblock"><span class="c-amber">{{BASE_URL}}</span>/users/<span class="c-amber">{{USER_ID}}</span>/posts</pre>
@@ -283,7 +287,7 @@ wails build</pre>
         <p>
           Any key whose name contains <code>key</code>, <code>token</code>, <code>secret</code>,
           <code>password</code>, <code>pass</code>, <code>auth</code>, <code>credential</code>,
-          or <code>private</code> (case-insensitive) is automatically masked in the UI with a
+          or <code>private</code> (case-insensitive) is automatically masked in the environment modal UI with a
           reveal toggle.
         </p>
         <p>Examples: <code>API_KEY</code>, <code>ACCESS_TOKEN</code>, <code>DB_PASSWORD</code>, <code>CLIENT_SECRET</code>.</p>
@@ -296,7 +300,7 @@ wails build</pre>
       <div class="docs-section" id="redirects">
         <h2>Redirects</h2>
         <p>
-          A toggle in the request bar lets you control whether Postier follows 3xx redirects.
+          A toggle in the settings lets you control whether Postier follows 3xx redirects.
           When disabled, you see the raw redirect response. When enabled, all redirect hops
           appear in the timing breakdown of the Timeline tab.
         </p>
@@ -309,7 +313,7 @@ wails build</pre>
           After sending a request, the response area shows five tabs:
         </p>
         <ul>
-          <li><strong style="color:var(--sand)">Body</strong> — Response body with Raw / JSON toggle and syntax highlighting. Click any JSON path to copy it as an inject reference (<code>{{@filename|body.path}}</code>).</li>
+          <li><strong style="color:var(--sand)">Body</strong> — Response body with Raw / JSON toggle and syntax highlighting. Click any JSON path in the explore modal to copy it as an inject reference (<code>{{@filename|body.path}}</code>).</li>
           <li><strong style="color:var(--sand)">Headers</strong> — All response headers as a structured list.</li>
           <li><strong style="color:var(--sand)">Cookies</strong> — Cookies set by the response.</li>
           <li><strong style="color:var(--sand)">Request</strong> — The exact request Postier sent, formatted as HTTP, cURL, wget, or HTTPie.</li>
@@ -317,7 +321,7 @@ wails build</pre>
         </ul>
         <p>
           At the top of the response area: HTTP status code (color-coded), total time, and response size.
-          Timing breakdown per phase (DNS, TCP, TLS, TTFB, Transfer) is visible alongside the timeline.
+          Timing breakdown per phase (DNS, TCP, TLS, TTFB, Transfer) is visible alongside the timeline while clicking on the request time.
         </p>
       </div>
 
@@ -364,10 +368,10 @@ wails build</pre>
 
       <!-- =========== DEPENDENCY GRAPH =========== -->
       <div class="docs-section" id="graph">
-        <h2>Dependency Graph</h2>
+        <h2>Run All & Dependency Graph</h2>
+        <p>A run all button is available on the collection root folder to allow you to run all request placed on the collection.</p>
         <p>
-          The dependency graph lets you chain requests together — the output of one
-          request feeds into the input of another.
+          If you have chain some requests together the dependency graph show you the path for each injection.
         </p>
         <h3>How it works</h3>
         <p>
@@ -455,11 +459,16 @@ wails build</pre>
 
         <h3>Built-in themes</h3>
         <ul>
+          <li>Postier light</li>
+          <li>Postier dark</li>
+          <li>Radix</li>
           <li>Catppuccin Mocha</li>
           <li>Catppuccin Macchiato</li>
           <li>Catppuccin Frappé</li>
           <li>Catppuccin Latte</li>
-          <li>Rosé Pine (Main, Moon, Dawn)</li>
+          <li>Rosé Pine</li>
+          <li>Rosé Pine Moon</li>
+          <li>Rosé Pine Dawn</li>
         </ul>
 
         <h3>Custom themes</h3>
@@ -490,6 +499,11 @@ wails build</pre>
   <span class="c-amber">"body"</span>: <span class="c-green">"{\n  \"name\": \"Ada Lovelace\"\n}"</span>,
   <span class="c-amber">"followRedirects"</span>: <span class="c-blue">true</span>
 }</pre>
+        <div class="docs-callout docs-callout--blue">
+          <p>
+            The response is also save in the <code>.postier</code> file, this could be useful to check data while being out-of-connection or use in agent directly from the file.
+          </p>
+        </div>
       </div>
 
       <!-- =========== .POSTIER.ENV FORMAT =========== -->
@@ -525,12 +539,16 @@ wails build</pre>
               <td><code>Ctrl + Enter</code></td>
             </tr>
             <tr>
+              <td>Save request</td>
+              <td><code>Ctrl + S</code></td>
+            </tr>
+            <tr>
               <td>Copy response body</td>
               <td><code>Ctrl + Shift + C</code></td>
             </tr>
             <tr>
               <td>Toggle sidebar</td>
-              <td><code>Ctrl + B</code></td>
+              <td><code>Ctrl + N</code></td>
             </tr>
           </tbody>
         </table>

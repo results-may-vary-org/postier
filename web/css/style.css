@@ -1049,10 +1049,10 @@ body:has(.theme-chip--dawn:hover) {
   white-space: pre;
   line-height: 1.7;
 }
-.docs-codeblock .c-amber { color: var(--amber); }
-.docs-codeblock .c-green { color: var(--green); }
-.docs-codeblock .c-blue  { color: var(--blue); }
-.docs-codeblock .c-red   { color: var(--red); }
+.docs-codeblock .c-amber { color: var(--old-amber); }
+.docs-codeblock .c-green { color: var(--old-green); }
+.docs-codeblock .c-blue  { color: var(--old-blue); }
+.docs-codeblock .c-red   { color: var(--old-red); }
 .docs-codeblock .c-dim   { color: var(--text-dim); }
 
 .docs-callout {
