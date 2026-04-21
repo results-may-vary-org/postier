@@ -83,7 +83,12 @@ jobs:
           [[ "${DISTRO:-}" == "24.04" ]] && OPTS="-tags webkit2_41"
           wails build --platform ${{ matrix.platform }} -o postier $OPTS
 
-      # Windows build runs in PowerShell to avoid Git Bash quirks with NSIS
+      # NSIS is not pre-installed on GitHub Windows runners — install via Chocolatey
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install nsis --yes --no-progress
+
       # -nsis produces build/bin/postier-amd64-installer.exe alongside the .exe
       - name: Build (Windows)
         if: runner.os == 'Windows'
