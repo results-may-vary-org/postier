@@ -1,17 +1,23 @@
-name: Build
+name: Build and Publish
 
 on: workflow_dispatch
 
+env:
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
 jobs:
   get-tag:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
-      tag: ${{ steps.tag.outputs.tag }}
+      tag: ${{ steps.get_tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - id: tag
+
+      - name: Get latest tag
+        id: get_tag
         run: |
           tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "tag=$tag" >> $GITHUB_OUTPUT
@@ -21,127 +27,124 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux/amd64
-            artifact: linux-amd64
-          - os: windows-latest
-            platform: windows/amd64
-            artifact: windows-amd64
-          - os: macos-latest
-            platform: darwin/universal
-            artifact: darwin-universal
-    runs-on: ${{ matrix.os }}
+        build:
+          - name: 'postier'
+            platform: 'linux/amd64'
+            platform_hyphen: 'linux-amd64'
+            os: 'ubuntu-22.04'
+          - name: 'postier'
+            platform: 'windows/amd64'
+            platform_hyphen: 'windows-amd64'
+            os: 'windows-latest'
+          - name: 'postier'
+            platform: 'darwin/universal'
+            platform_hyphen: 'darwin-universal'
+            os: 'macos-latest'
+
+    runs-on: ${{ matrix.build.os }}
+    env:
+      POSTIER_VERSION: ${{ needs.get-tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Ubuntu 20.04/22.04 → libwebkit2gtk-4.0, Ubuntu 24.04 → libwebkit2gtk-4.1
-      # DISTRO is exported so the build step can add -tags webkit2_41 on 24.04
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          export DEBIAN_FRONTEND=noninteractive
-          until sudo apt-get -yq update; do sleep 2; done
-          DISTRO=$(lsb_release -rs)
-          if [[ "$DISTRO" == "24.04" ]]; then
-            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.1-dev gcc-aarch64-linux-gnu
-          else
-            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.0-dev gcc-aarch64-linux-gnu
-          fi
-          echo "DISTRO=$DISTRO" >> $GITHUB_ENV
-
-      - uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
           go-version: '1.23'
-          check-latest: true
           cache: true
-          cache-dependency-path: go.sum
 
-      - uses: actions/setup-node@v4
+      - name: Cache Go modules
+        uses: actions/cache@v3
         with:
-          node-version: '20.x'
-          check-latest: true
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-      - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      # darwin uses just the name so wails produces postier.app — needed for DMG creation
+      # other platforms embed platform + tag in the name for versioned artifact filenames
+      - name: Build wails
+        uses: dAppServer/wails-build-action@main
+        id: build
+        with:
+          build-cache: false
+          build-name: ${{ matrix.build.platform == 'darwin/universal' && matrix.build.name || format('{0}-{1}-{2}', matrix.build.name, matrix.build.platform_hyphen, needs.get-tag.outputs.tag) }}
+          build-platform: ${{ matrix.build.platform }}
+          package: false
+          nsis: ${{ matrix.build.platform == 'windows/amd64' }}
+          go-version: '1.23'
+          wails-version: 'v2.10.2'
 
-      - name: Install frontend dependencies
-        shell: bash
-        run: |
-          if [ -f "frontend/package.json" ]; then
-            cd frontend && npm ci
-          elif [ -f "package.json" ]; then
-            npm ci
-          fi
-
-      # Linux/macOS build — handles Ubuntu 24.04 webkit tag
-      - name: Build (Linux / macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          OPTS=""
-          [[ "${DISTRO:-}" == "24.04" ]] && OPTS="-tags webkit2_41"
-          wails build --platform ${{ matrix.platform }} -o postier $OPTS
-
-      # NSIS is not pre-installed on GitHub Windows runners — install via Chocolatey
-      - name: Install NSIS (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: choco install nsis --yes --no-progress
-
-      # -nsis produces build/bin/postier-amd64-installer.exe alongside the .exe
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: wails build --platform windows/amd64 -o postier -nsis -webview2 download
-
-      - name: Set executable permissions (Linux)
-        if: runner.os == 'Linux'
-        run: chmod +x build/bin/postier
-
-      - name: Set executable permissions (macOS)
-        if: runner.os == 'macOS'
-        run: chmod +x build/bin/postier.app/Contents/MacOS/*
-
-      # Wrap the .app in a DMG for distribution — no signing required
+      # Wrap the .app in a DMG for distribution — no code signing required
       - name: Create DMG (macOS)
-        if: runner.os == 'macOS'
+        if: matrix.build.platform == 'darwin/universal'
         run: |
           hdiutil create \
             -volname "Postier" \
-            -srcfolder build/bin/postier.app \
+            -srcfolder "build/bin/postier.app" \
             -ov -format UDZO \
-            build/bin/postier-${{ needs.get-tag.outputs.tag }}.dmg
+            "build/bin/postier-darwin-universal-${{ needs.get-tag.outputs.tag }}.dmg"
 
-      - name: Upload binary artifact
+      - name: Upload DMG (macOS)
+        if: matrix.build.platform == 'darwin/universal'
         uses: actions/upload-artifact@v4
         with:
-          name: postier-${{ matrix.artifact }}-${{ needs.get-tag.outputs.tag }}
-          path: build/bin/
+          name: postier-darwin-universal-${{ needs.get-tag.outputs.tag }}
+          path: build/bin/postier-darwin-universal-${{ needs.get-tag.outputs.tag }}.dmg
 
-      # Linux only: build .deb, .rpm and .apk via nFPM
-      # nfpm.yaml expects the binary at build/bin/postier — wails puts it there via -o postier
-
-      - name: Install nFPM
-        if: runner.os == 'Linux'
+      - name: Setup nFPM
+        if: matrix.build.os == 'ubuntu-22.04'
         run: |
-          wget -q https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
+          wget https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
           tar -xzf nfpm_2.40.0_Linux_x86_64.tar.gz
           sudo mv nfpm /usr/local/bin/
+          nfpm --version
 
-      - name: Build Linux packages
-        if: runner.os == 'Linux'
+      - name: Create Linux packages
+        if: matrix.build.os == 'ubuntu-22.04'
         run: |
+          ls -la build/bin/
+
+          # The action names the binary postier-linux-amd64-{tag}; nfpm.yaml expects build/bin/postier
+          cp build/bin/postier-linux-amd64-${{ needs.get-tag.outputs.tag }} build/bin/postier
+          chmod +x build/bin/postier
+
+          if [ ! -f build/appicon.png ]; then
+            echo "Warning: appicon.png not found in build/"
+          fi
+
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager rpm --target ./build/
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager apk --target ./build/
 
+          ls -la build/*.{deb,rpm,apk} || echo "Some packages may not have been generated"
+
+      - name: Build nsis
+        if: matrix.build.os == 'ubuntu-22.04'
+        run: |
+          sudo apt install nsis libwebkit2gtk-4.0-dev
+          wails build -nsis -platform "windows"
+          cp build/bin/postier.exe build/bin/postier-windows-${{ needs.get-tag.outputs.tag }}.exe
+
       - name: Upload Linux packages
-        if: runner.os == 'Linux'
+        if: matrix.build.os == 'ubuntu-22.04'
         uses: actions/upload-artifact@v4
         with:
-          name: postier-linux-packages-${{ needs.get-tag.outputs.tag }}
+          name: linux-packages-${{ needs.get-tag.outputs.tag }}
           path: |
             build/*.deb
             build/*.rpm
             build/*.apk
+
+      - name: Upload NSIS packages
+        if: matrix.build.os == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsis-packages-${{ needs.get-tag.outputs.tag }}
+          path: |
+            build/bin/*.exe
