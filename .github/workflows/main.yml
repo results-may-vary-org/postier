@@ -41,7 +41,7 @@ jobs:
       # and avoids the path resolution issue of the root snider/build@v3 action.
       # Note: wails v2.10.0 is reportedly broken; pin to v2.9.0 if builds fail on latest.
       # build-name "postier" → wails runs with -o postier → binary at build/bin/postier.
-      - uses: snider/build/actions/build/wails2@v3
+      - uses: host-uk/build@v4
         with:
           build-name: ${{ matrix.build.name }}
           build-platform: ${{ matrix.build.platform }}
