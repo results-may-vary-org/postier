@@ -72,6 +72,10 @@ If you're running into some issues with Webkit, try running:
 wails dev -tags webkit2_41
 ```
 
+**Sidenote**
+
+ATM github action build package for webkit2gtk 4.0 so I build the one for webkit2gtk 4.1 manually.
+
 ## Contributing
 
 Contributions are welcome. Please feel free to open an issue or submit a pull request.
