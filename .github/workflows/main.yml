@@ -75,7 +75,7 @@ jobs:
           build-cache: false
           build-name: ${{ matrix.build.platform == 'darwin/universal' && matrix.build.name || format('{0}-{1}-{2}', matrix.build.name, matrix.build.platform_hyphen, needs.get-tag.outputs.tag) }}
           build-platform: ${{ matrix.build.platform }}
-          package: false
+          package: true
           nsis: ${{ matrix.build.platform == 'windows/amd64' }}
           go-version: '1.23'
           wails-version: 'v2.10.2'
