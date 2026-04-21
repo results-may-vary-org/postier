@@ -1,8 +1,11 @@
 name: Wails v2 build (matrix)
 
+# Triggered manually from the Actions tab
 on: workflow_dispatch
 
 jobs:
+  # Resolve the latest git tag so it can be shared across all matrix jobs.
+  # Falls back to v0.0.0 when no tag exists yet.
   get-tag:
     runs-on: ubuntu-latest
     outputs:
@@ -21,12 +24,12 @@ jobs:
   build:
     needs: get-tag
     strategy:
-      fail-fast: false
+      fail-fast: false # let all platforms finish even if one fails
       matrix:
         build: [
-          {name: postier, platform: linux/amd64, os: ubuntu-latest, nsis: false},
-          {name: postier, platform: windows/amd64, os: windows-latest, nsis: true},
-          {name: postier, platform: darwin/universal, os: macos-latest, nsis: false}
+          {name: postier, platform: linux/amd64,     os: ubuntu-latest,  nsis: 'false'},
+          {name: postier, platform: windows/amd64,   os: windows-latest, nsis: 'true'},
+          {name: postier, platform: darwin/universal, os: macos-latest,   nsis: 'false'}
         ]
     runs-on: ${{ matrix.build.os }}
     steps:
@@ -34,16 +37,16 @@ jobs:
         with:
           submodules: recursive
 
+      # Use the wails2 sub-action directly — it accepts nsis/build-obfuscate as proper inputs
+      # and avoids the path resolution issue of the root snider/build@v3 action.
+      # Note: wails v2.10.0 is reportedly broken; pin to v2.9.0 if builds fail on latest.
       # build-name "postier" → wails runs with -o postier → binary at build/bin/postier.
-      # nsis is not a root action input; the wails2 wrapper reads WAILS_NSIS from env.
-      # package: true uploads build/bin/* as a GitHub Actions artifact.
-      - uses: snider/build@v3
-        env:
-          WAILS_NSIS: ${{ matrix.build.nsis }}
+      - uses: snider/build/actions/build/wails2@v3
         with:
           build-name: ${{ matrix.build.name }}
           build-platform: ${{ matrix.build.platform }}
-          package: true
+          nsis: ${{ matrix.build.nsis }}
+          package: 'true'
 
       # --- Linux-only: generate .deb / .rpm / .apk packages via nFPM ---
       # nfpm.yaml describes package metadata and expects the binary at build/bin/postier,
