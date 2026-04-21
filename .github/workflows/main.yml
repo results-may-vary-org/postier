@@ -32,26 +32,14 @@ jobs:
             platform: 'linux/amd64'
             platform_hyphen: 'linux-amd64'
             os: 'ubuntu-22.04'
-            build_tags: 'rel'
-            webkit_dep: 'libwebkit2gtk-4.0-37'
-          - name: 'postier'
-            platform: 'linux/amd64'
-            platform_hyphen: 'linux-amd64-webkit2_41'
-            os: 'ubuntu-24.04'
-            build_tags: 'webkit2_41'
-            webkit_dep: 'libwebkit2gtk-4.1-0'
           - name: 'postier'
             platform: 'windows/amd64'
             platform_hyphen: 'windows-amd64'
             os: 'windows-latest'
-            build_tags: 'rel'
-            webkit_dep: ''
           - name: 'postier'
             platform: 'darwin/universal'
             platform_hyphen: 'darwin-universal'
             os: 'macos-latest'
-            build_tags: 'rel'
-            webkit_dep: ''
 
     runs-on: ${{ matrix.build.os }}
     env:
@@ -91,7 +79,6 @@ jobs:
           nsis: ${{ matrix.build.platform == 'windows/amd64' }}
           go-version: '1.23'
           wails-version: 'v2.10.2'
-          build-tags: ${{ matrix.build.build_tags }}
 
       # Wrap the .app in a DMG for distribution — no code signing required
       - name: Create DMG (macOS)
@@ -111,7 +98,7 @@ jobs:
           path: build/bin/postier-darwin-universal-${{ needs.get-tag.outputs.tag }}.dmg
 
       - name: Setup nFPM
-        if: matrix.build.platform == 'linux/amd64'
+        if: matrix.build.os == 'ubuntu-22.04'
         run: |
           wget https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
           tar -xzf nfpm_2.40.0_Linux_x86_64.tar.gz
@@ -119,21 +106,16 @@ jobs:
           nfpm --version
 
       - name: Create Linux packages
-        if: matrix.build.platform == 'linux/amd64'
+        if: matrix.build.os == 'ubuntu-22.04'
         run: |
           ls -la build/bin/
 
-          # The action names the binary postier-{platform_hyphen}-{tag}; nfpm.yaml expects build/bin/postier
-          cp build/bin/postier-${{ matrix.build.platform_hyphen }}-${{ needs.get-tag.outputs.tag }} build/bin/postier
+          # The action names the binary postier-linux-amd64-{tag}; nfpm.yaml expects build/bin/postier
+          cp build/bin/postier-linux-amd64-${{ needs.get-tag.outputs.tag }} build/bin/postier
           chmod +x build/bin/postier
 
           if [ ! -f build/appicon.png ]; then
             echo "Warning: appicon.png not found in build/"
-          fi
-
-          # Patch the webkit dependency for the webkit2_41 build (Arch, Ubuntu 24.04, etc.)
-          if [ -n "${{ matrix.build.webkit_dep }}" ]; then
-            sed -i 's/libwebkit2gtk-4\.[0-9]-[0-9]*/'"${{ matrix.build.webkit_dep }}"'/g' nfpm.yaml
           fi
 
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
@@ -150,10 +132,10 @@ jobs:
           cp build/bin/postier.exe build/bin/postier-windows-${{ needs.get-tag.outputs.tag }}.exe
 
       - name: Upload Linux packages
-        if: matrix.build.platform == 'linux/amd64'
+        if: matrix.build.os == 'ubuntu-22.04'
         uses: actions/upload-artifact@v4
         with:
-          name: linux-packages-${{ matrix.build.platform_hyphen }}-${{ needs.get-tag.outputs.tag }}
+          name: linux-packages-${{ needs.get-tag.outputs.tag }}
           path: |
             build/*.deb
             build/*.rpm
@@ -166,3 +148,79 @@ jobs:
           name: nsis-packages-${{ needs.get-tag.outputs.tag }}
           path: |
             build/bin/*.exe
+
+  build-webkit2_41:
+    needs: get-tag
+    runs-on: ubuntu-24.04
+    env:
+      POSTIER_VERSION: ${{ needs.get-tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build wails
+        uses: dAppServer/wails-build-action@main
+        id: build
+        with:
+          build-cache: false
+          build-name: postier-linux-amd64-webkit2_41-${{ needs.get-tag.outputs.tag }}
+          build-platform: 'linux/amd64'
+          package: false
+          nsis: false
+          go-version: '1.23'
+          wails-version: 'v2.10.2'
+          build-tags: 'webkit2_41'
+
+      - name: Setup nFPM
+        run: |
+          wget https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
+          tar -xzf nfpm_2.40.0_Linux_x86_64.tar.gz
+          sudo mv nfpm /usr/local/bin/
+          nfpm --version
+
+      - name: Create Linux packages (webkit2gtk 4.1)
+        run: |
+          ls -la build/bin/
+
+          cp build/bin/postier-linux-amd64-webkit2_41-${{ needs.get-tag.outputs.tag }} build/bin/postier
+          chmod +x build/bin/postier
+
+          if [ ! -f build/appicon.png ]; then
+            echo "Warning: appicon.png not found in build/"
+          fi
+
+          # Patch nfpm.yaml to depend on libwebkit2gtk-4.1-0 instead of 4.0
+          sed -i 's/libwebkit2gtk-4\.[0-9]-[0-9]*/libwebkit2gtk-4.1-0/g' nfpm.yaml
+
+          POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
+          POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager rpm --target ./build/
+          POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager apk --target ./build/
+
+          ls -la build/*.{deb,rpm,apk} || echo "Some packages may not have been generated"
+
+      - name: Upload Linux packages (webkit2gtk 4.1)
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages-linux-amd64-webkit2_41-${{ needs.get-tag.outputs.tag }}
+          path: |
+            build/*.deb
+            build/*.rpm
+            build/*.apk
