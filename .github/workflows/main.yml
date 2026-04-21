@@ -1,22 +1,17 @@
-name: Wails v2 build (matrix)
+name: Build
 
-# Triggered manually from the Actions tab
 on: workflow_dispatch
 
 jobs:
-  # Resolve the latest git tag so it can be shared across all matrix jobs.
-  # Falls back to v0.0.0 when no tag exists yet.
   get-tag:
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.get_tag.outputs.tag }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # full history required for git describe
-      - name: Get latest tag
-        id: get_tag
+          fetch-depth: 0
+      - id: tag
         run: |
           tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "tag=$tag" >> $GITHUB_OUTPUT
@@ -24,59 +19,109 @@ jobs:
   build:
     needs: get-tag
     strategy:
-      fail-fast: false # let all platforms finish even if one fails
+      fail-fast: false
       matrix:
-        build: [
-          {name: postier, platform: linux/amd64,     os: ubuntu-latest,  nsis: 'false'},
-          {name: postier, platform: windows/amd64,   os: windows-latest, nsis: 'true'},
-          {name: postier, platform: darwin/universal, os: macos-latest,   nsis: 'false'}
-        ]
-    runs-on: ${{ matrix.build.os }}
+        include:
+          - os: ubuntu-latest
+            platform: linux/amd64
+            artifact: linux-amd64
+          - os: windows-latest
+            platform: windows/amd64
+            artifact: windows-amd64
+          - os: macos-latest
+            platform: darwin/universal
+            artifact: darwin-universal
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      # Use the wails2 sub-action directly — it accepts nsis/build-obfuscate as proper inputs
-      # and avoids the path resolution issue of the root snider/build@v3 action.
-      # Note: wails v2.10.0 is reportedly broken; pin to v2.9.0 if builds fail on latest.
-      # build-name "postier" → wails runs with -o postier → binary at build/bin/postier.
-      - uses: host-uk/build@v4
-        with:
-          build-name: ${{ matrix.build.name }}
-          build-platform: ${{ matrix.build.platform }}
-          nsis: ${{ matrix.build.nsis }}
-          package: 'true'
-
-      # --- Linux-only: generate .deb / .rpm / .apk packages via nFPM ---
-      # nfpm.yaml describes package metadata and expects the binary at build/bin/postier,
-      # which is exactly where the build step above places it.
-      # POSTIER_VERSION is injected so packages carry the correct version string.
-
-      - name: Setup nFPM (Linux only)
-        if: matrix.build.os == 'ubuntu-latest'
+      # Ubuntu 20.04/22.04 → libwebkit2gtk-4.0, Ubuntu 24.04 → libwebkit2gtk-4.1
+      # DISTRO is exported so the build step can add -tags webkit2_41 on 24.04
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
         run: |
-          wget https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
+          export DEBIAN_FRONTEND=noninteractive
+          until sudo apt-get -yq update; do sleep 2; done
+          DISTRO=$(lsb_release -rs)
+          if [[ "$DISTRO" == "24.04" ]]; then
+            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.1-dev gcc-aarch64-linux-gnu
+          else
+            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.0-dev gcc-aarch64-linux-gnu
+          fi
+          echo "DISTRO=$DISTRO" >> $GITHUB_ENV
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          check-latest: true
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          check-latest: true
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: |
+          if [ -f "frontend/package.json" ]; then
+            cd frontend && npm ci
+          elif [ -f "package.json" ]; then
+            npm ci
+          fi
+
+      # -nsis produces a Windows installer alongside the .exe
+      # Ubuntu 24.04 needs -tags webkit2_41 for the newer WebKit ABI
+      - name: Build
+        shell: bash
+        run: |
+          OPTS=""
+          [[ "${{ matrix.platform }}" == "windows/amd64" ]] && OPTS="$OPTS -nsis -webview2 download"
+          [[ "${DISTRO:-}" == "24.04" ]] && OPTS="$OPTS -tags webkit2_41"
+          wails build --platform ${{ matrix.platform }} -o postier $OPTS
+
+      - name: Set executable permissions
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            chmod +x build/bin/*/Contents/MacOS/*
+          else
+            chmod +x build/bin/postier
+          fi
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: postier-${{ matrix.artifact }}-${{ needs.get-tag.outputs.tag }}
+          path: build/bin/
+
+      # Linux only: build .deb, .rpm and .apk via nFPM
+      # nfpm.yaml expects the binary at build/bin/postier — wails puts it there via -o postier
+
+      - name: Install nFPM
+        if: runner.os == 'Linux'
+        run: |
+          wget -q https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
           tar -xzf nfpm_2.40.0_Linux_x86_64.tar.gz
           sudo mv nfpm /usr/local/bin/
-          nfpm --version
 
-      - name: Create Linux packages (Linux only)
-        if: matrix.build.os == 'ubuntu-latest'
+      - name: Build Linux packages
+        if: runner.os == 'Linux'
         run: |
-          chmod +x build/bin/postier
-
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager rpm --target ./build/
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager apk --target ./build/
 
-          ls -la build/*.deb build/*.rpm build/*.apk || echo "Some packages may not have been generated"
-
-      - name: Upload Linux packages (Linux only)
-        if: matrix.build.os == 'ubuntu-latest'
+      - name: Upload Linux packages
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: linux-packages-${{ needs.get-tag.outputs.tag }}
+          name: postier-linux-packages-${{ needs.get-tag.outputs.tag }}
           path: |
             build/*.deb
             build/*.rpm
