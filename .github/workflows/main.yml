@@ -3,8 +3,6 @@ name: Wails v2 build (matrix)
 on: workflow_dispatch
 
 jobs:
-  # Resolve the latest git tag so it can be shared across all matrix jobs.
-  # Falls back to v0.0.0 when no tag exists yet.
   get-tag:
     runs-on: ubuntu-latest
     outputs:
@@ -13,7 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history required for git describe
+          fetch-depth: 0 # full history required for git describe
       - name: Get latest tag
         id: get_tag
         run: |
@@ -26,9 +24,9 @@ jobs:
       fail-fast: false
       matrix:
         build: [
-          {name: postier, platform: linux/amd64,    os: ubuntu-latest},
-          {name: postier, platform: windows/amd64,  os: windows-latest},
-          {name: postier, platform: darwin/universal, os: macos-latest}
+          {name: postier, platform: linux/amd64, os: ubuntu-latest, nsis: false},
+          {name: postier, platform: windows/amd64, os: windows-latest, nsis: true},
+          {name: postier, platform: darwin/universal, os: macos-latest, nsis: false}
         ]
     runs-on: ${{ matrix.build.os }}
     steps:
@@ -36,22 +34,21 @@ jobs:
         with:
           submodules: recursive
 
-      # Build the Wails app for the current matrix platform.
-      # - build-name "postier" → wails runs with -o postier → binary at build/bin/postier
-      # - package: true uploads build/bin/* as a GitHub Actions artifact (named postier_{OS}_{ARCH}_{tag})
-      # - nsis: only on Windows to also produce an installer (.exe)
+      # build-name "postier" → wails runs with -o postier → binary at build/bin/postier.
+      # nsis is not a root action input; the wails2 wrapper reads WAILS_NSIS from env.
+      # package: true uploads build/bin/* as a GitHub Actions artifact.
       - uses: snider/build@v3
+        env:
+          WAILS_NSIS: ${{ matrix.build.nsis }}
         with:
           build-name: ${{ matrix.build.name }}
           build-platform: ${{ matrix.build.platform }}
-          build-obfuscate: 'false'
           package: true
-          nsis: ${{ matrix.build.platform == 'windows/amd64' }}
 
       # --- Linux-only: generate .deb / .rpm / .apk packages via nFPM ---
-      # nfpm.yaml describes the package metadata and expects the binary at build/bin/postier,
+      # nfpm.yaml describes package metadata and expects the binary at build/bin/postier,
       # which is exactly where the build step above places it.
-      # The tag is injected as POSTIER_VERSION so the packages carry the correct version.
+      # POSTIER_VERSION is injected so packages carry the correct version string.
 
       - name: Setup nFPM (Linux only)
         if: matrix.build.os == 'ubuntu-latest'
@@ -64,7 +61,6 @@ jobs:
       - name: Create Linux packages (Linux only)
         if: matrix.build.os == 'ubuntu-latest'
         run: |
-          ls -la build/bin/
           chmod +x build/bin/postier
 
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
@@ -82,4 +78,3 @@ jobs:
             build/*.deb
             build/*.rpm
             build/*.apk
-
