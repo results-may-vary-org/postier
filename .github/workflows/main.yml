@@ -74,27 +74,41 @@ jobs:
             npm ci
           fi
 
-      # -nsis produces a Windows installer alongside the .exe
-      # Ubuntu 24.04 needs -tags webkit2_41 for the newer WebKit ABI
-      - name: Build
-        shell: bash
-        run: |
-          OPTS=""
-          [[ "${{ matrix.platform }}" == "windows/amd64" ]] && OPTS="$OPTS -nsis -webview2 download"
-          [[ "${DISTRO:-}" == "24.04" ]] && OPTS="$OPTS -tags webkit2_41"
-          wails build --platform ${{ matrix.platform }} -o postier $OPTS
-
-      - name: Set executable permissions
+      # Linux/macOS build — handles Ubuntu 24.04 webkit tag
+      - name: Build (Linux / macOS)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          if [ "${{ runner.os }}" == "macOS" ]; then
-            chmod +x build/bin/*/Contents/MacOS/*
-          else
-            chmod +x build/bin/postier
-          fi
+          OPTS=""
+          [[ "${DISTRO:-}" == "24.04" ]] && OPTS="-tags webkit2_41"
+          wails build --platform ${{ matrix.platform }} -o postier $OPTS
 
-      - name: Upload binary
+      # Windows build runs in PowerShell to avoid Git Bash quirks with NSIS
+      # -nsis produces build/bin/postier-amd64-installer.exe alongside the .exe
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: wails build --platform windows/amd64 -o postier -nsis -webview2 download
+
+      - name: Set executable permissions (Linux)
+        if: runner.os == 'Linux'
+        run: chmod +x build/bin/postier
+
+      - name: Set executable permissions (macOS)
+        if: runner.os == 'macOS'
+        run: chmod +x build/bin/postier.app/Contents/MacOS/*
+
+      # Wrap the .app in a DMG for distribution — no signing required
+      - name: Create DMG (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          hdiutil create \
+            -volname "Postier" \
+            -srcfolder build/bin/postier.app \
+            -ov -format UDZO \
+            build/bin/postier-${{ needs.get-tag.outputs.tag }}.dmg
+
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: postier-${{ matrix.artifact }}-${{ needs.get-tag.outputs.tag }}
