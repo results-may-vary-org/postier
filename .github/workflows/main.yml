@@ -1,4 +1,4 @@
-name: Build and Publish
+name: Build app for linux, windows and mac
 
 on: workflow_dispatch
 
@@ -32,14 +32,26 @@ jobs:
             platform: 'linux/amd64'
             platform_hyphen: 'linux-amd64'
             os: 'ubuntu-22.04'
+            build_tags: ''
+            webkit_dep: 'libwebkit2gtk-4.0-37'
+          - name: 'postier'
+            platform: 'linux/amd64'
+            platform_hyphen: 'linux-amd64-webkit2_41'
+            os: 'ubuntu-24.04'
+            build_tags: 'webkit2_41'
+            webkit_dep: 'libwebkit2gtk-4.1-0'
           - name: 'postier'
             platform: 'windows/amd64'
             platform_hyphen: 'windows-amd64'
             os: 'windows-latest'
+            build_tags: ''
+            webkit_dep: ''
           - name: 'postier'
             platform: 'darwin/universal'
             platform_hyphen: 'darwin-universal'
             os: 'macos-latest'
+            build_tags: ''
+            webkit_dep: ''
 
     runs-on: ${{ matrix.build.os }}
     env:
@@ -79,6 +91,7 @@ jobs:
           nsis: ${{ matrix.build.platform == 'windows/amd64' }}
           go-version: '1.23'
           wails-version: 'v2.10.2'
+          build-tags: ${{ matrix.build.build_tags }}
 
       # Wrap the .app in a DMG for distribution — no code signing required
       - name: Create DMG (macOS)
@@ -98,7 +111,7 @@ jobs:
           path: build/bin/postier-darwin-universal-${{ needs.get-tag.outputs.tag }}.dmg
 
       - name: Setup nFPM
-        if: matrix.build.os == 'ubuntu-22.04'
+        if: matrix.build.platform == 'linux/amd64'
         run: |
           wget https://github.com/goreleaser/nfpm/releases/download/v2.40.0/nfpm_2.40.0_Linux_x86_64.tar.gz
           tar -xzf nfpm_2.40.0_Linux_x86_64.tar.gz
@@ -106,16 +119,21 @@ jobs:
           nfpm --version
 
       - name: Create Linux packages
-        if: matrix.build.os == 'ubuntu-22.04'
+        if: matrix.build.platform == 'linux/amd64'
         run: |
           ls -la build/bin/
 
-          # The action names the binary postier-linux-amd64-{tag}; nfpm.yaml expects build/bin/postier
-          cp build/bin/postier-linux-amd64-${{ needs.get-tag.outputs.tag }} build/bin/postier
+          # The action names the binary postier-{platform_hyphen}-{tag}; nfpm.yaml expects build/bin/postier
+          cp build/bin/postier-${{ matrix.build.platform_hyphen }}-${{ needs.get-tag.outputs.tag }} build/bin/postier
           chmod +x build/bin/postier
 
           if [ ! -f build/appicon.png ]; then
             echo "Warning: appicon.png not found in build/"
+          fi
+
+          # Patch the webkit dependency for the webkit2_41 build (Arch, Ubuntu 24.04, etc.)
+          if [ -n "${{ matrix.build.webkit_dep }}" ]; then
+            sed -i 's/libwebkit2gtk-4\.[0-9]-[0-9]*/'"${{ matrix.build.webkit_dep }}"'/g' nfpm.yaml
           fi
 
           POSTIER_VERSION=${{ needs.get-tag.outputs.tag }} nfpm package --packager deb --target ./build/
@@ -132,10 +150,10 @@ jobs:
           cp build/bin/postier.exe build/bin/postier-windows-${{ needs.get-tag.outputs.tag }}.exe
 
       - name: Upload Linux packages
-        if: matrix.build.os == 'ubuntu-22.04'
+        if: matrix.build.platform == 'linux/amd64'
         uses: actions/upload-artifact@v4
         with:
-          name: linux-packages-${{ needs.get-tag.outputs.tag }}
+          name: linux-packages-${{ matrix.build.platform_hyphen }}-${{ needs.get-tag.outputs.tag }}
           path: |
             build/*.deb
             build/*.rpm
